@@ -1,73 +1,157 @@
-# Welcome to your Lovable project
+# Boitel JBS - Feedlot Viability Simulator
 
-## Project info
+Sistema de simulação de viabilidade para confinamento bovino com gestão completa de dados.
 
-**URL**: https://lovable.dev/projects/89cf873c-fe74-4253-8a77-ec96f9898aeb
+## 🚀 Funcionalidades
 
-## How can I edit this code?
+- **Dashboard**: Visão geral dos KPIs principais
+- **Premissas**: Configuração de parâmetros globais do confinamento
+- **Simulação**: Criação e cálculo de cenários de confinamento
+- **Simulações**: Listagem, busca, duplicação e exclusão de simulações
+- **Resultados**: Visualização detalhada com gráficos e análise de sensibilidade
+- **Cadastros**: Gestão de insumos, fornecedores e clientes
+- **Comparação**: Comparação lado a lado de até 3 simulações
+- **Upload**: Importação em lote via CSV/XLSX
+- **Autenticação**: Sistema seguro com RLS (Row Level Security)
 
-There are several ways of editing your application.
+## 🛠️ Stack Tecnológica
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI**: Tailwind CSS + shadcn/ui
+- **Backend**: Supabase (Auth + Database + Storage)
+- **Gráficos**: Recharts
+- **Routing**: React Router DOM
+- **State**: React Query + Context API
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/89cf873c-fe74-4253-8a77-ec96f9898aeb) and start prompting.
+## 📊 Schema do Banco de Dados
 
-Changes made via Lovable will be committed automatically to this repo.
+### Principais Tabelas
 
-**Use your preferred IDE**
+- **profiles**: Perfis de usuários com roles (user/admin)
+- **premises**: Premissas globais do confinamento
+- **inputs**: Cadastro de insumos (milho, ração, suplementos, etc.)
+- **suppliers**: Cadastro de fornecedores
+- **clients**: Cadastro de clientes
+- **simulations**: Simulações criadas pelos usuários
+- **simulation_results**: Resultados calculados das simulações
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Storage
+- **uploads**: Bucket para arquivos CSV/XLSX
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🔐 Segurança
 
-Follow these steps:
+Todas as tabelas possuem **Row Level Security (RLS)** habilitado com políticas que garantem:
+- Usuários só acessam seus próprios dados
+- Administradores podem acessar todos os dados
+- Campos `created_by` são preenchidos automaticamente
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 📈 Fórmulas de Cálculo
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+### Métricas Básicas
+```
+Peso de Saída = Peso Entrada + (GMD × Dias Confinamento)
+Peso Carcaça = Peso Saída × 53%
+Arrobas Hook = Peso Carcaça ÷ 15
+Arrobas Ganho = (Peso Saída - Peso Entrada) ÷ 15
 ```
 
-**Edit a file directly in GitHub**
+### Custos
+```
+Custo Ração = DMI × Dias × Custo MS × (1 + % Desperdício)
+Custo Total = Compra + Ração + Sanidade + Transporte + Financeiro + Depreciação + Overhead + Fixo + Mortalidade
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### KPIs
+```
+Margem Total = Receita - Custo Total
+Spread (R$/@) = Preço Venda - Custo por @
+Break-even (R$/@) = Custo Total ÷ Arrobas Hook
+ROI (%) = (Margem Total ÷ Custo Total) × 100
+Payback (dias) = Custo Total ÷ (Margem ÷ Dias)
+```
 
-**Use GitHub Codespaces**
+## ⚙️ Configuração
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Variáveis de Ambiente
 
-## What technologies are used for this project?
+O projeto usa as seguintes constantes do Supabase (já configuradas):
+```
+SUPABASE_URL = "https://tsydbthtusyaarthnrhv.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
 
-This project is built with:
+### Instalação
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Clone o repositório
+2. Instale as dependências: `npm install`
+3. Execute o projeto: `npm run dev`
+4. Acesse: `http://localhost:5173`
 
-## How can I deploy this project?
+### Banco de Dados
 
-Simply open [Lovable](https://lovable.dev/projects/89cf873c-fe74-4253-8a77-ec96f9898aeb) and click on Share -> Publish.
+O banco está configurado no Supabase com:
+- Autenticação habilitada
+- RLS em todas as tabelas
+- Políticas de segurança configuradas
+- Storage bucket para uploads
 
-## Can I connect a custom domain to my Lovable project?
+## 📱 Páginas e Rotas
 
-Yes, you can!
+| Rota | Página | Funcionalidade |
+|------|--------|----------------|
+| `/` | Dashboard | KPIs e resumo geral |
+| `/premises` | Premissas | Configuração global |
+| `/simulation` | Simulação | Criar nova simulação |
+| `/simulations` | Simulações | Listar simulações |
+| `/results/:id` | Resultados | Detalhes da simulação |
+| `/registries` | Cadastros | CRUD de insumos/fornecedores/clientes |
+| `/compare` | Comparação | Comparar simulações |
+| `/uploads` | Upload | Importar dados CSV/XLSX |
+| `/settings` | Configurações | Perfil do usuário |
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🎨 Design System
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Cores**: HSL com tokens semânticos
+- **Tema**: Light mode, clean, minimalista  
+- **Componentes**: shadcn/ui customizados
+- **Responsivo**: Mobile-first design
+- **Tipografia**: Sistema consistente
+
+## 🧪 Uso da Aplicação
+
+1. **Cadastro/Login**: Crie uma conta ou faça login
+2. **Premissas**: Configure os parâmetros globais
+3. **Cadastros**: Adicione insumos, fornecedores e clientes
+4. **Simulação**: Crie cenários de confinamento
+5. **Resultados**: Analise KPIs e gráficos
+6. **Comparação**: Compare diferentes simulações
+7. **Upload**: Importe dados em lote
+
+## 🔧 Principais Hooks
+
+- `useTableCRUD(tableName)`: CRUD genérico para tabelas
+- `useAuth()`: Contexto de autenticação
+- `useToast()`: Sistema de notificações
+
+## 📊 Funcionalidades de Negócio
+
+- Cálculo automático de KPIs em tempo real
+- Análise de sensibilidade (±5%, ±10%)
+- Duplicação de simulações para cenários
+- Comparação visual entre simulações
+- Importação em lote de planilhas
+- Gestão de premissas por usuário
+- Histórico de simulações
+
+## 🚀 Próximos Passos
+
+- [ ] Implementar exportação PDF/CSV dos resultados
+- [ ] Adicionar mais opções de análise de sensibilidade
+- [ ] Integração com APIs de preços em tempo real
+- [ ] Dashboard executivo com filtros avançados
+- [ ] Relatórios customizáveis
+- [ ] Notificações por email
+
+---
+
+Desenvolvido com ❤️ para o setor pecuário brasileiro.
