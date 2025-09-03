@@ -6,24 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Save, Eye } from 'lucide-react';
+import { Calculator, Save, ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { calculateSimulation, formatCurrency, formatWeight, formatArroubas, formatPercentage } from '@/services/calculations';
-import type { SimulationInput, SimulationResult } from '@/services/calculations';
+import { formatCurrency, formatWeight, formatArroubas, formatPercentage } from '@/services/calculations';
+import type { SimulationInput } from '@/services/calculations';
+import { useSimCalculator } from '@/hooks/useSimCalculator';
 
 export default function Simulation() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('animal');
-  const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [result, setResult] = useState<SimulationResult | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [simulationId, setSimulationId] = useState<string | null>(null);
+  const [premises, setPremises] = useState<any>(null);
 
   const [formData, setFormData] = useState<Partial<SimulationInput> & { title: string; notes?: string }>({
     title: '',
@@ -44,8 +45,12 @@ export default function Simulation() {
     depreciation_total: 0,
     overhead_total: 0,
     
-    notes: ''
+    notes: '',
+    use_average_weight: true, // Default to recommended method
   });
+
+  // Use the calculation hook
+  const { result, isValid, hasMinimumInputs } = useSimCalculator({ input: formData, premises });
 
   useEffect(() => {
     const editId = searchParams.get('edit');
@@ -54,7 +59,28 @@ export default function Simulation() {
       setSimulationId(editId);
       loadSimulation(editId);
     }
+    loadPremises();
   }, [searchParams]);
+
+  const loadPremises = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('premises')
+        .select('*')
+        .eq('created_by', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      if (data) {
+        setPremises(data);
+      }
+    } catch (error) {
+      console.error('Error loading premises:', error);
+    }
+  };
 
   const loadSimulation = async (id: string) => {
     try {
@@ -96,7 +122,7 @@ export default function Simulation() {
     }
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: typeof value === 'string' ? (isNaN(Number(value)) ? value : Number(value)) : value
@@ -105,46 +131,12 @@ export default function Simulation() {
 
   const handleCalculate = () => {
     if (!validateForm()) return;
+    setActiveTab('results');
     
-    setIsCalculating(true);
-    
-    try {
-      const input: SimulationInput = {
-        entry_weight_kg: formData.entry_weight_kg!,
-        days_on_feed: formData.days_on_feed!,
-        adg_kg_day: formData.adg_kg_day!,
-        dmi_pct_bw: formData.dmi_pct_bw,
-        dmi_kg_day: formData.dmi_kg_day,
-        mortality_pct: formData.mortality_pct!,
-        feed_waste_pct: formData.feed_waste_pct!,
-        purchase_price_per_at: formData.purchase_price_per_at,
-        purchase_price_per_kg: formData.purchase_price_per_kg,
-        selling_price_per_at: formData.selling_price_per_at!,
-        feed_cost_kg_dm: formData.feed_cost_kg_dm!,
-        health_cost_total: formData.health_cost_total!,
-        transport_cost_total: formData.transport_cost_total!,
-        financial_cost_total: formData.financial_cost_total!,
-        depreciation_total: formData.depreciation_total!,
-        overhead_total: formData.overhead_total!,
-      };
-
-      const calculationResult = calculateSimulation(input);
-      setResult(calculationResult);
-      setActiveTab('results');
-      
-      toast({
-        title: "Cálculo concluído",
-        description: "Os resultados da simulação foram calculados com sucesso.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro no cálculo",
-        description: "Ocorreu um erro ao calcular a simulação. Verifique os dados inseridos.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCalculating(false);
-    }
+    toast({
+      title: "Cálculo concluído",
+      description: "Os resultados da simulação foram calculados com sucesso.",
+    });
   };
 
   const handleSave = async () => {
@@ -296,11 +288,13 @@ export default function Simulation() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="animal">Animal & Performance</TabsTrigger>
-          <TabsTrigger value="costs">Preços & Custos</TabsTrigger>
-          <TabsTrigger value="results" disabled={!result}>Resultados</TabsTrigger>
-        </TabsList>
+        <div className="sticky top-4 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg p-1">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="animal">1. Animal & Performance</TabsTrigger>
+            <TabsTrigger value="costs">2. Preços & Custos</TabsTrigger>
+            <TabsTrigger value="results" disabled={!result}>3. Resultados</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="animal" className="space-y-6">
           <Card>
@@ -312,13 +306,14 @@ export default function Simulation() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="title">Título da Simulação *</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                     placeholder="Ex: Boi 300kg - 120 dias"
+                    required
                   />
                 </div>
                 
@@ -330,6 +325,7 @@ export default function Simulation() {
                     value={formData.entry_weight_kg}
                     onChange={(e) => handleInputChange('entry_weight_kg', e.target.value)}
                     placeholder="300"
+                    required
                   />
                 </div>
 
@@ -341,7 +337,9 @@ export default function Simulation() {
                     value={formData.days_on_feed}
                     onChange={(e) => handleInputChange('days_on_feed', e.target.value)}
                     placeholder="120"
+                    required
                   />
+                  <p className="text-xs text-muted-foreground">Recomendado: 90-180 dias</p>
                 </div>
 
                 <div className="space-y-2">
@@ -353,7 +351,9 @@ export default function Simulation() {
                     value={formData.adg_kg_day}
                     onChange={(e) => handleInputChange('adg_kg_day', e.target.value)}
                     placeholder="1.4"
+                    required
                   />
+                  <p className="text-xs text-muted-foreground">Típico: 1.0-1.8 kg/dia</p>
                 </div>
 
                 <div className="space-y-2">
@@ -366,6 +366,7 @@ export default function Simulation() {
                     onChange={(e) => handleInputChange('dmi_pct_bw', e.target.value)}
                     placeholder="2.5"
                   />
+                  <p className="text-xs text-muted-foreground">Típico: 2.2-2.8% do peso vivo</p>
                 </div>
 
                 <div className="space-y-2">
@@ -378,6 +379,7 @@ export default function Simulation() {
                     onChange={(e) => handleInputChange('mortality_pct', e.target.value)}
                     placeholder="2.0"
                   />
+                  <p className="text-xs text-muted-foreground">Aceitável: 0.5-3%</p>
                 </div>
 
                 <div className="space-y-2">
@@ -390,7 +392,38 @@ export default function Simulation() {
                     onChange={(e) => handleInputChange('feed_waste_pct', e.target.value)}
                     placeholder="5.0"
                   />
+                  <p className="text-xs text-muted-foreground">Típico: 2-8%</p>
                 </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Método de Cálculo do Consumo</Label>
+                <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
+                  <Switch
+                    id="use_average_weight"
+                    checked={formData.use_average_weight}
+                    onCheckedChange={(checked) => handleInputChange('use_average_weight', checked)}
+                  />
+                  <Label htmlFor="use_average_weight" className="text-sm">
+                    Usar peso médio para calcular DMI (recomendado)
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Peso médio = (peso entrada + peso saída) / 2. Método mais preciso para consumo diário.
+                </p>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => navigate(-1)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
+                <Button onClick={() => setActiveTab('costs')} disabled={!hasMinimumInputs}>
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Próximo: Preços & Custos
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -416,6 +449,7 @@ export default function Simulation() {
                     onChange={(e) => handleInputChange('purchase_price_per_at', e.target.value)}
                     placeholder="280.00"
                   />
+                  <p className="text-xs text-muted-foreground">Preço por arroba (15kg)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -428,6 +462,7 @@ export default function Simulation() {
                     onChange={(e) => handleInputChange('purchase_price_per_kg', e.target.value)}
                     placeholder="18.67"
                   />
+                  <p className="text-xs text-muted-foreground">Alternativo ao preço por @</p>
                 </div>
 
                 <div className="space-y-2">
@@ -439,6 +474,7 @@ export default function Simulation() {
                     value={formData.selling_price_per_at}
                     onChange={(e) => handleInputChange('selling_price_per_at', e.target.value)}
                     placeholder="350.00"
+                    required
                   />
                 </div>
 
@@ -451,6 +487,7 @@ export default function Simulation() {
                     value={formData.feed_cost_kg_dm}
                     onChange={(e) => handleInputChange('feed_cost_kg_dm', e.target.value)}
                     placeholder="0.45"
+                    required
                   />
                 </div>
 
@@ -528,14 +565,14 @@ export default function Simulation() {
                 />
               </div>
 
-              <div className="flex gap-4">
-                <Button
-                  onClick={handleCalculate}
-                  disabled={isCalculating}
-                  className="flex-1"
-                >
-                  <Calculator className="w-4 h-4 mr-2" />
-                  {isCalculating ? 'Calculando...' : 'Calcular Simulação'}
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setActiveTab('animal')}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Anterior: Animal
+                </Button>
+                <Button onClick={handleCalculate} disabled={!hasMinimumInputs}>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Calcular & Ver Resultados
                 </Button>
               </div>
             </CardContent>
@@ -650,11 +687,14 @@ export default function Simulation() {
                 </Card>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setActiveTab('costs')}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Anterior: Custos
+                </Button>
                 <Button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex-1"
                 >
                   <Save className="w-4 h-4 mr-2" />
                   {isSaving ? 'Salvando...' : 'Salvar Simulação'}
