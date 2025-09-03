@@ -79,14 +79,18 @@ Sistema completo de simulação e análise de viabilidade para operações de co
 
 ## 🔧 Configuração
 
+## 🔧 Configuração
+
 ### Variáveis de Ambiente
 
-Crie um arquivo `.env.local` na raiz do projeto:
+Crie um arquivo `.env.local` na raiz do projeto com as seguintes variáveis:
 
-```env
-VITE_SUPABASE_URL=sua_url_do_supabase
-VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
+```bash
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+**Importante:** Nunca commite seu arquivo `.env.local` para controle de versão. O arquivo `.env` foi removido do tracking e adicionado ao `.gitignore`.
 
 ### Instalação
 
