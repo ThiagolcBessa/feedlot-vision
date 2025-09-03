@@ -1,9 +1,99 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, BarChart3, Database, TrendingUp, DollarSign, Beef } from 'lucide-react';
+import { Calculator, BarChart3, Database, TrendingUp, DollarSign, Beef, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface DashboardStats {
+  activeSimulations: number;
+  avgMargin: number;
+  avgBreakEven: number;
+  avgROI: number;
+  totalAnimals: number;
+}
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    activeSimulations: 0,
+    avgMargin: 0,
+    avgBreakEven: 0,
+    avgROI: 0,
+    totalAnimals: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardStats();
+    }
+  }, [user]);
+
+  const loadDashboardStats = async () => {
+    if (!user) return;
+
+    try {
+      // Get simulations with results
+      const { data: simulations, error } = await supabase
+        .from('simulations')
+        .select(`
+          *,
+          simulation_results (*)
+        `)
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (simulations && simulations.length > 0) {
+        const simulationsWithResults = simulations.filter(sim => sim.simulation_results?.[0]);
+        
+        const activeCount = simulationsWithResults.length;
+        const totalAnimals = simulations.reduce((sum, sim) => sum + (sim.entry_weight_kg * 10 / 300), 0); // Rough estimate
+        
+        if (simulationsWithResults.length > 0) {
+          const avgMargin = simulationsWithResults.reduce((sum, sim) => 
+            sum + (sim.simulation_results[0]?.margin_total || 0), 0) / simulationsWithResults.length;
+          
+          const avgBreakEven = simulationsWithResults.reduce((sum, sim) => 
+            sum + (sim.simulation_results[0]?.break_even_r_per_at || 0), 0) / simulationsWithResults.length;
+          
+          const avgROI = simulationsWithResults.reduce((sum, sim) => 
+            sum + (sim.simulation_results[0]?.roi_pct || 0), 0) / simulationsWithResults.length;
+
+          setStats({
+            activeSimulations: activeCount,
+            avgMargin,
+            avgBreakEven,
+            avgROI,
+            totalAnimals: Math.round(totalAnimals),
+          });
+        } else {
+          setStats({
+            activeSimulations: activeCount,
+            avgMargin: 0,
+            avgBreakEven: 0,
+            avgROI: 0,
+            totalAnimals: Math.round(totalAnimals),
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -22,8 +112,8 @@ export default function Dashboard() {
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+3 desde o mês passado</p>
+            <div className="text-2xl font-bold">{stats.activeSimulations}</div>
+            <p className="text-xs text-muted-foreground">Total de simulações criadas</p>
           </CardContent>
         </Card>
         
@@ -33,19 +123,19 @@ export default function Dashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 245/@</div>
-            <p className="text-xs text-muted-foreground">+12% vs. simulação anterior</p>
+            <div className="text-2xl font-bold">{formatCurrency(stats.avgMargin)}</div>
+            <p className="text-xs text-muted-foreground">Por animal simulado</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Animais Simulados</CardTitle>
+            <CardTitle className="text-sm font-medium">Break-even Médio</CardTitle>
             <Beef className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2.450</div>
-            <p className="text-xs text-muted-foreground">Total em simulações ativas</p>
+            <div className="text-2xl font-bold">{formatCurrency(stats.avgBreakEven)}</div>
+            <p className="text-xs text-muted-foreground">R$/@</p>
           </CardContent>
         </Card>
         
@@ -55,8 +145,8 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18.5%</div>
-            <p className="text-xs text-muted-foreground">Meta: 15% - 20%</p>
+            <div className="text-2xl font-bold">{stats.avgROI.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Retorno sobre investimento</p>
           </CardContent>
         </Card>
       </div>
@@ -66,7 +156,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
+              <Plus className="h-5 w-5" />
               Nova Simulação
             </CardTitle>
             <CardDescription>
@@ -84,15 +174,15 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Análise de Resultados
+              Ver Simulações
             </CardTitle>
             <CardDescription>
-              Visualize gráficos e relatórios das suas simulações
+              Visualize e compare suas simulações existentes
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/results">Ver Resultados</Link>
+              <Link to="/simulations">Ver Simulações</Link>
             </Button>
           </CardContent>
         </Card>
@@ -109,7 +199,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline" className="w-full">
-              <Link to="/registry">Gerenciar Dados</Link>
+              <Link to="/registries">Gerenciar Dados</Link>
             </Button>
           </CardContent>
         </Card>
@@ -119,34 +209,40 @@ export default function Dashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Atividade Recente</CardTitle>
-          <CardDescription>Suas últimas simulações e alterações</CardDescription>
+          <CardDescription>Suas últimas simulações</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-l-4 border-l-primary pl-4">
-              <div>
-                <p className="font-medium">Simulação Boi 450kg - 120 dias</p>
-                <p className="text-sm text-muted-foreground">Criada há 2 horas</p>
-              </div>
-              <span className="text-sm text-green-600 font-medium">Concluída</span>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse flex items-center space-x-4">
+                  <div className="w-4 h-12 bg-muted rounded"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                    <div className="h-3 bg-muted rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
             </div>
-            
-            <div className="flex items-center justify-between border-l-4 border-l-secondary pl-4">
-              <div>
-                <p className="font-medium">Atualização de preços - Milho</p>
-                <p className="text-sm text-muted-foreground">Há 1 dia</p>
-              </div>
-              <span className="text-sm text-blue-600 font-medium">Processado</span>
+          ) : stats.activeSimulations > 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                Você tem {stats.activeSimulations} simulações ativas
+              </p>
+              <Button asChild variant="outline">
+                <Link to="/simulations">Ver Todas</Link>
+              </Button>
             </div>
-            
-            <div className="flex items-center justify-between border-l-4 border-l-muted pl-4">
-              <div>
-                <p className="font-medium">Novo fornecedor adicionado</p>
-                <p className="text-sm text-muted-foreground">Há 3 dias</p>
-              </div>
-              <span className="text-sm text-muted-foreground font-medium">Registrado</span>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                Nenhuma simulação encontrada. Crie sua primeira simulação para começar!
+              </p>
+              <Button asChild>
+                <Link to="/simulation">Criar Simulação</Link>
+              </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

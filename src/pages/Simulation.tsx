@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,10 +17,13 @@ import type { SimulationInput, SimulationResult } from '@/services/calculations'
 export default function Simulation() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('animal');
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<SimulationResult | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [simulationId, setSimulationId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<SimulationInput> & { title: string; notes?: string }>({
     title: '',
@@ -43,6 +46,55 @@ export default function Simulation() {
     
     notes: ''
   });
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId) {
+      setIsEditing(true);
+      setSimulationId(editId);
+      loadSimulation(editId);
+    }
+  }, [searchParams]);
+
+  const loadSimulation = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('simulations')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      setFormData({
+        title: data.title,
+        entry_weight_kg: data.entry_weight_kg,
+        days_on_feed: data.days_on_feed,
+        adg_kg_day: data.adg_kg_day,
+        dmi_pct_bw: data.dmi_pct_bw,
+        dmi_kg_day: data.dmi_kg_day,
+        mortality_pct: data.mortality_pct,
+        feed_waste_pct: data.feed_waste_pct,
+        purchase_price_per_at: data.purchase_price_per_at,
+        purchase_price_per_kg: data.purchase_price_per_kg,
+        selling_price_per_at: data.selling_price_per_at,
+        feed_cost_kg_dm: data.feed_cost_kg_dm,
+        health_cost_total: data.health_cost_total,
+        transport_cost_total: data.transport_cost_total,
+        financial_cost_total: data.financial_cost_total,
+        depreciation_total: data.depreciation_total,
+        overhead_total: data.overhead_total,
+        notes: data.notes,
+      });
+    } catch (error) {
+      console.error('Error loading simulation:', error);
+      toast({
+        title: "Erro ao carregar simulação",
+        description: "Não foi possível carregar os dados da simulação.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
@@ -101,11 +153,13 @@ export default function Simulation() {
     setIsSaving(true);
 
     try {
-      // Save simulation
-      const { data: simulation, error: simError } = await supabase
-        .from('simulations')
-        .insert({
-          title: formData.title,
+      let simulation;
+      
+      if (isEditing && simulationId) {
+        // Update existing simulation
+        const { data, error: simError } = await supabase
+          .from('simulations')
+          .update({
           entry_weight_kg: formData.entry_weight_kg!,
           days_on_feed: formData.days_on_feed!,
           adg_kg_day: formData.adg_kg_day!,
@@ -123,14 +177,52 @@ export default function Simulation() {
           feed_waste_pct: formData.feed_waste_pct!,
           mortality_pct: formData.mortality_pct!,
           notes: formData.notes,
-          created_by: user.id,
         })
+        .eq('id', simulationId)
         .select()
         .single();
 
-      if (simError) throw simError;
+        if (simError) throw simError;
+        simulation = data;
+      } else {
+        // Create new simulation
+        const { data, error: simError } = await supabase
+          .from('simulations')
+          .insert({
+            entry_weight_kg: formData.entry_weight_kg!,
+            days_on_feed: formData.days_on_feed!,
+            adg_kg_day: formData.adg_kg_day!,
+            dmi_pct_bw: formData.dmi_pct_bw,
+            dmi_kg_day: formData.dmi_kg_day,
+            purchase_price_per_at: formData.purchase_price_per_at,
+            purchase_price_per_kg: formData.purchase_price_per_kg,
+            selling_price_per_at: formData.selling_price_per_at!,
+            health_cost_total: formData.health_cost_total!,
+            transport_cost_total: formData.transport_cost_total!,
+            financial_cost_total: formData.financial_cost_total!,
+            depreciation_total: formData.depreciation_total!,
+            overhead_total: formData.overhead_total!,
+            feed_cost_kg_dm: formData.feed_cost_kg_dm!,
+            feed_waste_pct: formData.feed_waste_pct!,
+            mortality_pct: formData.mortality_pct!,
+            notes: formData.notes,
+          })
+          .select()
+          .single();
 
-      // Save results
+        if (simError) throw simError;
+        simulation = data;
+      }
+
+      // Delete existing results if editing
+      if (isEditing && simulationId) {
+        await supabase
+          .from('simulation_results')
+          .delete()
+          .eq('simulation_id', simulationId);
+      }
+
+      // Save new results
       const { error: resultError } = await supabase
         .from('simulation_results')
         .insert({
@@ -151,8 +243,8 @@ export default function Simulation() {
       if (resultError) throw resultError;
 
       toast({
-        title: "Simulação salva",
-        description: "A simulação foi salva com sucesso.",
+        title: isEditing ? "Simulação atualizada" : "Simulação salva",
+        description: isEditing ? "A simulação foi atualizada com sucesso." : "A simulação foi salva com sucesso.",
       });
 
       navigate(`/results/${simulation.id}`);
@@ -192,7 +284,9 @@ export default function Simulation() {
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Nova Simulação</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          {isEditing ? 'Editar Simulação' : 'Nova Simulação'}
+        </h1>
         <p className="text-muted-foreground">
           Configure os parâmetros da simulação de viabilidade do confinamento
         </p>
