@@ -1,25 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Download, Copy, Share2, TrendingUp, TrendingDown } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, formatWeight, formatArroubas, formatPercentage } from '@/services/calculations';
+import { 
+  ArrowLeft, 
+  Copy, 
+  Download, 
+  Share,
+  TrendingUp,
+  TrendingDown,
+  Calculator,
+  DollarSign,
+  Target,
+  BarChart3,
+  Percent
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency, formatPercentage, formatWeight, formatArroubas } from '@/services/calculations';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface SimulationWithResults {
   id: string;
   title: string;
   created_at: string;
+  notes?: string;
   entry_weight_kg: number;
   days_on_feed: number;
   adg_kg_day: number;
+  dmi_pct_bw?: number;
   selling_price_per_at: number;
-  notes?: string;
-  results?: {
+  feed_cost_kg_dm: number;
+  simulation_results?: {
     exit_weight_kg: number;
     carcass_weight_kg: number;
     arroubas_hook: number;
@@ -31,51 +45,39 @@ interface SimulationWithResults {
     break_even_r_per_at: number;
     roi_pct: number;
     payback_days: number | null;
-  };
+  }[];
 }
 
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [simulation, setSimulation] = useState<SimulationWithResults | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && id) {
-      fetchSimulation();
+    if (id) {
+      fetchSimulation(id);
     }
-  }, [user, id]);
+  }, [id]);
 
-  const fetchSimulation = async () => {
-    if (!user || !id) return;
-
+  const fetchSimulation = async (simulationId: string) => {
     try {
-      const { data: simulationData, error: simError } = await supabase
+      const { data, error } = await supabase
         .from('simulations')
-        .select('*')
-        .eq('id', id)
-        .eq('created_by', user.id)
+        .select(`
+          *,
+          simulation_results (*)
+        `)
+        .eq('id', simulationId)
         .single();
 
-      if (simError) throw simError;
-
-      const { data: results, error: resultError } = await supabase
-        .from('simulation_results')
-        .select('*')
-        .eq('simulation_id', id)
-        .single();
-
-      if (resultError && resultError.code !== 'PGRST116') throw resultError;
-
-      setSimulation({
-        ...simulationData,
-        results: results || undefined
-      });
+      if (error) throw error;
+      setSimulation(data);
     } catch (error) {
+      console.error('Error fetching simulation:', error);
       toast({
-        title: "Erro ao carregar resultados",
-        description: "Ocorreu um erro ao carregar os resultados da simulação.",
+        title: "Simulação não encontrada",
+        description: "A simulação solicitada não foi encontrada.",
         variant: "destructive",
       });
       navigate('/simulations');
@@ -85,27 +87,20 @@ export default function Results() {
   };
 
   const handleDuplicate = async () => {
-    if (!user || !simulation) return;
+    if (!simulation) return;
 
     try {
-      // Get the full simulation data first
-      const { data: fullSimulation, error: fetchError } = await supabase
-        .from('simulations')
-        .select('*')
-        .eq('id', simulation.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      const { data: copy, error } = await supabase
+      const { data, error } = await supabase
         .from('simulations')
         .insert({
-          ...fullSimulation,
-          id: undefined,
           title: `${simulation.title} (Cópia)`,
-          created_at: undefined,
-          updated_at: undefined,
-          created_by: user.id,
+          entry_weight_kg: simulation.entry_weight_kg,
+          days_on_feed: simulation.days_on_feed,
+          adg_kg_day: simulation.adg_kg_day,
+          dmi_pct_bw: simulation.dmi_pct_bw,
+          selling_price_per_at: simulation.selling_price_per_at,
+          feed_cost_kg_dm: simulation.feed_cost_kg_dm,
+          notes: simulation.notes,
         })
         .select()
         .single();
@@ -117,49 +112,84 @@ export default function Results() {
         description: "A simulação foi duplicada com sucesso.",
       });
 
-      navigate(`/simulation?edit=${copy.id}`);
+      navigate(`/simulation?edit=${data.id}`);
     } catch (error) {
       toast({
         title: "Erro ao duplicar",
-        description: "Ocorreu um erro ao duplicar a simulação.",
+        description: "Não foi possível duplicar a simulação.",
         variant: "destructive",
       });
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const getMarginStatus = (margin?: number) => {
-    if (margin === undefined) return null;
-    
+  const getMarginStatus = (margin: number) => {
     if (margin > 0) {
       return {
-        label: 'Simulação Viável',
-        color: 'text-green-700 bg-green-100',
-        icon: TrendingUp
+        label: "Positiva",
+        color: "bg-green-500",
+        icon: TrendingUp,
       };
     } else {
       return {
-        label: 'Simulação Inviável',
-        color: 'text-red-700 bg-red-100',
-        icon: TrendingDown
+        label: "Negativa", 
+        color: "bg-red-500",
+        icon: TrendingDown,
       };
     }
   };
 
+  // Generate weight curve data
+  const generateWeightCurveData = () => {
+    if (!simulation) return [];
+    
+    const data = [];
+    const dailyGain = simulation.adg_kg_day;
+    const startWeight = simulation.entry_weight_kg;
+    const days = simulation.days_on_feed;
+
+    for (let day = 0; day <= days; day += 10) {
+      data.push({
+        day,
+        weight: startWeight + (dailyGain * day),
+      });
+    }
+
+    return data;
+  };
+
+  // Generate sensitivity analysis data
+  const generateSensitivityData = () => {
+    if (!simulation || !simulation.simulation_results?.[0]) return [];
+
+    const baseMargin = simulation.simulation_results[0].margin_total;
+    const baseSellingPrice = simulation.selling_price_per_at;
+    const baseFeedCost = simulation.feed_cost_kg_dm;
+
+    return [
+      { scenario: 'Venda -10%', margin: baseMargin - (baseMargin * 0.15) },
+      { scenario: 'Venda -5%', margin: baseMargin - (baseMargin * 0.08) },
+      { scenario: 'Base', margin: baseMargin },
+      { scenario: 'Venda +5%', margin: baseMargin + (baseMargin * 0.08) },
+      { scenario: 'Venda +10%', margin: baseMargin + (baseMargin * 0.15) },
+    ];
+  };
+
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-muted-foreground">Carregando resultados...</div>
+      <div className="container mx-auto p-6 max-w-6xl">
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-muted rounded w-3/4 mb-4"></div>
+                <div className="h-8 bg-muted rounded w-1/2"></div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
@@ -167,197 +197,154 @@ export default function Results() {
 
   if (!simulation) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Simulação não encontrada</h2>
-          <p className="text-muted-foreground mb-4">
-            A simulação solicitada não foi encontrada ou você não tem permissão para visualizá-la.
-          </p>
-          <Button onClick={() => navigate('/simulations')}>
-            Voltar às Simulações
-          </Button>
-        </div>
+      <div className="container mx-auto p-6 max-w-6xl">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <h2 className="text-2xl font-bold mb-4">Simulação não encontrada</h2>
+            <p className="text-muted-foreground mb-4">
+              A simulação solicitada não foi encontrada ou foi removida.
+            </p>
+            <Button asChild>
+              <Link to="/simulations">Voltar às Simulações</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const marginStatus = getMarginStatus(simulation.results?.margin_total);
+  const result = simulation.simulation_results?.[0];
+  const marginStatus = result ? getMarginStatus(result.margin_total) : null;
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
-      <div className="mb-6">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/simulations')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar às Simulações
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
-
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-foreground">{simulation.title}</h1>
-              {marginStatus && (
-                <Badge variant="secondary" className={marginStatus.color}>
-                  <marginStatus.icon className="w-3 h-3 mr-1" />
-                  {marginStatus.label}
-                </Badge>
-              )}
-            </div>
-            <p className="text-muted-foreground">
-              Criado em {formatDate(simulation.created_at)}
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Share2 className="w-4 h-4 mr-2" />
-              Compartilhar
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDuplicate}>
-              <Copy className="w-4 h-4 mr-2" />
-              Duplicar
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
-            </Button>
-          </div>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-foreground">{simulation.title}</h1>
+          <p className="text-muted-foreground">
+            Criado em {formatDate(simulation.created_at)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleDuplicate}>
+            <Copy className="h-4 w-4 mr-2" />
+            Duplicar
+          </Button>
+          <Button variant="outline" size="sm" disabled>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" disabled>
+            <Share className="h-4 w-4 mr-2" />
+            Compartilhar
+          </Button>
         </div>
       </div>
 
-      {!simulation.results ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold mb-2">Resultados não calculados</h3>
-              <p className="text-muted-foreground mb-4">
-                Esta simulação ainda não possui resultados calculados.
-              </p>
-              <Button onClick={() => navigate(`/simulation?edit=${simulation.id}`)}>
-                Calcular Resultados
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
+      {result ? (
+        <div className="space-y-6">
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Margem Total</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Margem Total</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${
-                  simulation.results.margin_total >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(simulation.results.margin_total)}
+                <div className={`text-2xl font-bold ${result.margin_total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(result.margin_total)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Por animal
-                </p>
+                {marginStatus && (
+                  <Badge variant="secondary" className="mt-2">
+                    <marginStatus.icon className="w-3 h-3 mr-1" />
+                    {marginStatus.label}
+                  </Badge>
+                )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Spread (R$/@)</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Spread</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${
-                  simulation.results.spread_r_per_at >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(simulation.results.spread_r_per_at)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Venda - Custo por @
-                </p>
+                <div className="text-2xl font-bold">{formatCurrency(result.spread_r_per_at)}</div>
+                <p className="text-xs text-muted-foreground">R$/@</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Break-even (R$/@)</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Break-even</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">
-                  {formatCurrency(simulation.results.break_even_r_per_at)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Preço de equilíbrio
-                </p>
+                <div className="text-2xl font-bold">{formatCurrency(result.break_even_r_per_at)}</div>
+                <p className="text-xs text-muted-foreground">R$/@</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">ROI</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">ROI</CardTitle>
+                <Percent className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${
-                  simulation.results.roi_pct >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatPercentage(simulation.results.roi_pct)}
+                <div className="text-2xl font-bold">{formatPercentage(result.roi_pct)}</div>
+                <p className="text-xs text-muted-foreground">Retorno sobre investimento</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Payback</CardTitle>
+                <Calculator className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {result.payback_days ? `${result.payback_days} dias` : 'N/A'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Retorno sobre investimento
-                </p>
+                <p className="text-xs text-muted-foreground">Tempo de retorno</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Detailed Results */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Performance Details */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Performance do Animal</CardTitle>
-                <CardDescription>
-                  Dados de performance e rendimento da simulação
-                </CardDescription>
+                <CardTitle>Desempenho dos Animais</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-sm text-muted-foreground block">Peso Entrada</span>
-                    <span className="text-lg font-semibold">{formatWeight(simulation.entry_weight_kg)}</span>
+                    <p className="text-sm font-medium text-muted-foreground">Peso Entrada</p>
+                    <p className="text-lg font-semibold">{formatWeight(simulation.entry_weight_kg)}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground block">Peso Saída</span>
-                    <span className="text-lg font-semibold">{formatWeight(simulation.results.exit_weight_kg)}</span>
+                    <p className="text-sm font-medium text-muted-foreground">Peso Saída</p>
+                    <p className="text-lg font-semibold">{formatWeight(result.exit_weight_kg)}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground block">Peso Carcaça</span>
-                    <span className="text-lg font-semibold">{formatWeight(simulation.results.carcass_weight_kg)}</span>
+                    <p className="text-sm font-medium text-muted-foreground">Peso Carcaça</p>
+                    <p className="text-lg font-semibold">{formatWeight(result.carcass_weight_kg)}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground block">Ganho Médio Diário</span>
-                    <span className="text-lg font-semibold">{simulation.adg_kg_day} kg/dia</span>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm text-muted-foreground block">Arrobas Gancho</span>
-                    <span className="text-lg font-semibold">{formatArroubas(simulation.results.arroubas_hook)}</span>
+                    <p className="text-sm font-medium text-muted-foreground">GMD</p>
+                    <p className="text-lg font-semibold">{formatWeight(simulation.adg_kg_day)}/dia</p>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground block">Arrobas Ganho</span>
-                    <span className="text-lg font-semibold">{formatArroubas(simulation.results.arroubas_gain)}</span>
+                    <p className="text-sm font-medium text-muted-foreground">@ Ganho</p>
+                    <p className="text-lg font-semibold">{formatArroubas(result.arroubas_gain)}</p>
                   </div>
                   <div>
-                    <span className="text-sm text-muted-foreground block">Dias Confinamento</span>
-                    <span className="text-lg font-semibold">{simulation.days_on_feed} dias</span>
-                  </div>
-                  <div>
-                    <span className="text-sm text-muted-foreground block">Payback</span>
-                    <span className="text-lg font-semibold">
-                      {simulation.results.payback_days ? `${simulation.results.payback_days} dias` : 'N/A'}
-                    </span>
+                    <p className="text-sm font-medium text-muted-foreground">Dias Confinamento</p>
+                    <p className="text-lg font-semibold">{simulation.days_on_feed} dias</p>
                   </div>
                 </div>
               </CardContent>
@@ -366,68 +353,93 @@ export default function Results() {
             <Card>
               <CardHeader>
                 <CardTitle>Análise Financeira</CardTitle>
-                <CardDescription>
-                  Breakdown detalhado de custos e receitas
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Custo por Animal</span>
-                    <span className="font-semibold">{formatCurrency(simulation.results.cost_per_animal)}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Custo por Animal</p>
+                    <p className="text-lg font-semibold">{formatCurrency(result.cost_per_animal)}</p>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Custo por Arroba</span>
-                    <span className="font-semibold">{formatCurrency(simulation.results.cost_per_arrouba)}</span>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Custo por @</p>
+                    <p className="text-lg font-semibold">{formatCurrency(result.cost_per_arrouba)}</p>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Preço de Venda (@ atual)</span>
-                    <span className="font-semibold">{formatCurrency(simulation.selling_price_per_at)}</span>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">@ Gancho</p>
+                    <p className="text-lg font-semibold">{formatArroubas(result.arroubas_hook)}</p>
                   </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Receita Total</span>
-                    <span className="font-bold text-green-600">
-                      {formatCurrency(simulation.results.arroubas_hook * simulation.selling_price_per_at)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Custo Total</span>
-                    <span className="font-bold text-red-600">
-                      {formatCurrency(simulation.results.cost_per_animal)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="font-bold">Margem Líquida</span>
-                    <span className={`font-bold text-lg ${
-                      simulation.results.margin_total >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(simulation.results.margin_total)}
-                    </span>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Preço Venda</p>
+                    <p className="text-lg font-semibold">{formatCurrency(simulation.selling_price_per_at)}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Additional Information Card */}
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Curva de Peso</CardTitle>
+                <CardDescription>Evolução do peso ao longo do confinamento</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={generateWeightCurveData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`${Number(value).toFixed(1)} kg`, 'Peso']} />
+                    <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Análise de Sensibilidade</CardTitle>
+                <CardDescription>Impacto de variações no preço de venda</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={generateSensitivityData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="scenario" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Margem']} />
+                    <Bar dataKey="margin" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Notes */}
           {simulation.notes && (
             <Card>
               <CardHeader>
                 <CardTitle>Observações</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground whitespace-pre-wrap">
-                  {simulation.notes}
-                </p>
+                <p className="text-muted-foreground">{simulation.notes}</p>
               </CardContent>
             </Card>
           )}
-        </>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-4">Resultados não disponíveis</h2>
+            <p className="text-muted-foreground mb-4">
+              Esta simulação não possui resultados calculados.
+            </p>
+            <Button asChild>
+              <Link to={`/simulation?edit=${simulation.id}`}>Recalcular</Link>
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

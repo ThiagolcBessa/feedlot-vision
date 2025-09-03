@@ -1,35 +1,70 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Helper function to get typed table operations
 export function useTableCRUD(tableName: 'inputs' | 'suppliers' | 'clients' | 'premises') {
+  const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { toast } = useToast();
 
-  // Load data
   const loadData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
     try {
-      setLoading(true);
       const { data: result, error } = await supabase
-        .from(tableName as any)
+        .from(tableName)
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setData(result || []);
-    } catch (error: any) {
+
+      // Create seed data for inputs if table is empty
+      if (tableName === 'inputs' && (!result || result.length === 0)) {
+        await createSeedInputs();
+      }
+    } catch (error) {
+      console.error(`Error loading ${tableName}:`, error);
       toast({
-        title: 'Erro ao carregar dados',
-        description: error.message,
-        variant: 'destructive',
+        title: "Erro ao carregar dados",
+        description: `Não foi possível carregar os dados de ${tableName}.`,
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createSeedInputs = async () => {
+    try {
+      const seedInputs = [
+        { name: 'Milho', unit: 'kg', price: 0.42, vendor: 'Fornecedor Padrão', notes: 'Grão básico para ração' },
+        { name: 'Ração Confinamento', unit: 'kg', price: 0.85, vendor: 'Fornecedor Padrão', notes: 'Ração completa para engorda' },
+        { name: 'Suplemento Mineral', unit: 'kg', price: 2.50, vendor: 'Fornecedor Padrão', notes: 'Suplementação mineral' },
+        { name: 'Medicamentos', unit: 'cabeça', price: 45.00, vendor: 'Fornecedor Padrão', notes: 'Custos veterinários médios' },
+        { name: 'Transporte', unit: 'cabeça', price: 25.00, vendor: 'Fornecedor Padrão', notes: 'Frete médio por animal' }
+      ];
+
+      const { error } = await supabase.from('inputs').insert(seedInputs);
+      
+      if (!error) {
+        // Reload data to show the new seed inputs
+        const { data: newData } = await supabase
+          .from(tableName)
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (newData) {
+          setData(newData);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating seed inputs:', error);
     }
   };
 
@@ -126,7 +161,7 @@ export function useTableCRUD(tableName: 'inputs' | 'suppliers' | 'clients' | 'pr
 
   useEffect(() => {
     loadData();
-  }, [tableName]);
+  }, [tableName, user]);
 
   return {
     data,

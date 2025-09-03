@@ -160,6 +160,7 @@ export default function Simulation() {
         const { data, error: simError } = await supabase
           .from('simulations')
           .update({
+          title: formData.title,
           entry_weight_kg: formData.entry_weight_kg!,
           days_on_feed: formData.days_on_feed!,
           adg_kg_day: formData.adg_kg_day!,
@@ -189,6 +190,7 @@ export default function Simulation() {
         const { data, error: simError } = await supabase
           .from('simulations')
           .insert({
+            title: formData.title,
             entry_weight_kg: formData.entry_weight_kg!,
             days_on_feed: formData.days_on_feed!,
             adg_kg_day: formData.adg_kg_day!,

@@ -1,157 +1,178 @@
-# Boitel JBS - Feedlot Viability Simulator
+# Boitel JBS - Feedlot Vision
 
-Sistema de simulação de viabilidade para confinamento bovino com gestão completa de dados.
+Sistema completo de simulação e análise de viabilidade para operações de confinamento bovino.
 
 ## 🚀 Funcionalidades
 
-- **Dashboard**: Visão geral dos KPIs principais
-- **Premissas**: Configuração de parâmetros globais do confinamento
-- **Simulação**: Criação e cálculo de cenários de confinamento
-- **Simulações**: Listagem, busca, duplicação e exclusão de simulações
-- **Resultados**: Visualização detalhada com gráficos e análise de sensibilidade
-- **Cadastros**: Gestão de insumos, fornecedores e clientes
-- **Comparação**: Comparação lado a lado de até 3 simulações
-- **Upload**: Importação em lote via CSV/XLSX
-- **Autenticação**: Sistema seguro com RLS (Row Level Security)
+### Dashboard
+- Visão geral com KPIs principais (simulações ativas, margem média, ROI, break-even)
+- Estatísticas em tempo real baseadas nas simulações do usuário
+- Links rápidos para principais funcionalidades
 
-## 🛠️ Stack Tecnológica
+### Simulação de Confinamento
+- **Passo 1**: Configuração de animais e performance (peso entrada, GMD, consumo, mortalidade)
+- **Passo 2**: Preços e custos (compra, venda, ração, sanidade, transporte)
+- **Passo 3**: Resultados em tempo real com KPIs calculados
+- Edição de simulações existentes
+- Duplicação de simulações
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI**: Tailwind CSS + shadcn/ui
-- **Backend**: Supabase (Auth + Database + Storage)
+### Análise de Resultados
+- KPIs detalhados: margem total, spread, break-even, ROI, payback
+- Gráficos interativos: curva de peso, análise de sensibilidade
+- Detalhamento de performance e análise financeira
+- Exportação de resultados (CSV)
+
+### Comparação de Simulações
+- Seleção de até 3 simulações para comparação
+- Visualização lado a lado dos principais indicadores
+- Gráficos comparativos de margens, ROI, custos
+
+### Gestão de Registros
+- **Insumos**: CRUD completo com preços, fornecedores, unidades
+- **Fornecedores**: Cadastro com dados de contato
+- **Clientes**: Gestão de clientes e contatos
+- Busca e filtros em tempo real
+
+### Configuração de Premissas
+- Capacidade do confinamento
+- Custos fixos diários por cabeça
+- Percentuais padrão de mortalidade e refugo
+- Parâmetros globais da operação
+
+### Upload e Importação
+- Upload de arquivos CSV/XLSX para Supabase Storage
+- Preview dos dados antes da importação
+- Mapeamento automático para tabela de insumos
+- Histórico de uploads realizados
+
+## 🛠️ Tecnologias
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: Tailwind CSS, shadcn/ui, Radix UI
 - **Gráficos**: Recharts
-- **Routing**: React Router DOM
-- **State**: React Query + Context API
+- **Backend**: Supabase (Auth, Database, Storage)
+- **Roteamento**: React Router DOM
+- **Formulários**: React Hook Form, Zod
+- **Estado**: React Hooks, Context API
 
-## 📊 Schema do Banco de Dados
+## 📊 Fórmulas de Cálculo
 
-### Principais Tabelas
+### Peso e Performance
+- `peso_saida = peso_entrada + (gmd * dias_confinamento)`
+- `peso_carcaca = peso_saida * 0.53` (rendimento carcaça)
+- `arrobas_gancho = peso_carcaca / 15`
+- `arrobas_ganho = (peso_saida - peso_entrada) / 15`
 
-- **profiles**: Perfis de usuários com roles (user/admin)
-- **premises**: Premissas globais do confinamento
-- **inputs**: Cadastro de insumos (milho, ração, suplementos, etc.)
-- **suppliers**: Cadastro de fornecedores
-- **clients**: Cadastro de clientes
-- **simulations**: Simulações criadas pelos usuários
-- **simulation_results**: Resultados calculados das simulações
+### Custos e Receitas
+- `dmi_kg_dia = peso_medio * (dmi_pct_pv / 100)` (se não informado)
+- `custo_racao = (dmi_kg_dia * dias * custo_kg_ms) * (1 + desperdicio/100)`
+- `custo_compra = (peso_entrada/15) * preco_arroba OU peso_entrada * preco_kg`
+- `receita = arrobas_gancho * preco_venda_arroba`
 
-### Storage
-- **uploads**: Bucket para arquivos CSV/XLSX
+### Indicadores
+- `margem_total = receita - custo_total`
+- `custo_por_arroba = custo_total / arrobas_gancho`
+- `spread = preco_venda - custo_por_arroba`
+- `break_even = custo_por_arroba`
+- `roi = (margem_total / custo_total) * 100`
+- `payback = custo_total / (margem_total / dias_confinamento)`
 
-## 🔐 Segurança
-
-Todas as tabelas possuem **Row Level Security (RLS)** habilitado com políticas que garantem:
-- Usuários só acessam seus próprios dados
-- Administradores podem acessar todos os dados
-- Campos `created_by` são preenchidos automaticamente
-
-## 📈 Fórmulas de Cálculo
-
-### Métricas Básicas
-```
-Peso de Saída = Peso Entrada + (GMD × Dias Confinamento)
-Peso Carcaça = Peso Saída × 53%
-Arrobas Hook = Peso Carcaça ÷ 15
-Arrobas Ganho = (Peso Saída - Peso Entrada) ÷ 15
-```
-
-### Custos
-```
-Custo Ração = DMI × Dias × Custo MS × (1 + % Desperdício)
-Custo Total = Compra + Ração + Sanidade + Transporte + Financeiro + Depreciação + Overhead + Fixo + Mortalidade
-```
-
-### KPIs
-```
-Margem Total = Receita - Custo Total
-Spread (R$/@) = Preço Venda - Custo por @
-Break-even (R$/@) = Custo Total ÷ Arrobas Hook
-ROI (%) = (Margem Total ÷ Custo Total) × 100
-Payback (dias) = Custo Total ÷ (Margem ÷ Dias)
-```
-
-## ⚙️ Configuração
+## 🔧 Configuração
 
 ### Variáveis de Ambiente
 
-O projeto usa as seguintes constantes do Supabase (já configuradas):
-```
-SUPABASE_URL = "https://tsydbthtusyaarthnrhv.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+Crie um arquivo `.env.local` na raiz do projeto:
+
+```env
+VITE_SUPABASE_URL=sua_url_do_supabase
+VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
 ```
 
 ### Instalação
 
-1. Clone o repositório
-2. Instale as dependências: `npm install`
-3. Execute o projeto: `npm run dev`
-4. Acesse: `http://localhost:5173`
+```bash
+# Instalar dependências
+npm install
 
-### Banco de Dados
+# Executar em desenvolvimento
+npm run dev
 
-O banco está configurado no Supabase com:
-- Autenticação habilitada
-- RLS em todas as tabelas
-- Políticas de segurança configuradas
-- Storage bucket para uploads
+# Build para produção
+npm run build
 
-## 📱 Páginas e Rotas
+# Preview da build de produção
+npm run preview
+```
 
-| Rota | Página | Funcionalidade |
-|------|--------|----------------|
-| `/` | Dashboard | KPIs e resumo geral |
-| `/premises` | Premissas | Configuração global |
-| `/simulation` | Simulação | Criar nova simulação |
-| `/simulations` | Simulações | Listar simulações |
-| `/results/:id` | Resultados | Detalhes da simulação |
-| `/registries` | Cadastros | CRUD de insumos/fornecedores/clientes |
-| `/compare` | Comparação | Comparar simulações |
-| `/uploads` | Upload | Importar dados CSV/XLSX |
-| `/settings` | Configurações | Perfil do usuário |
+## 🗃️ Estrutura do Banco
 
-## 🎨 Design System
+### Tabelas Principais
+- `profiles` - Perfis de usuário
+- `premises` - Configurações da propriedade
+- `simulations` - Simulações de confinamento
+- `simulation_results` - Resultados calculados
+- `inputs` - Cadastro de insumos
+- `suppliers` - Fornecedores
+- `clients` - Clientes
 
-- **Cores**: HSL com tokens semânticos
-- **Tema**: Light mode, clean, minimalista  
-- **Componentes**: shadcn/ui customizados
-- **Responsivo**: Mobile-first design
-- **Tipografia**: Sistema consistente
+### Segurança (RLS)
+- Todas as tabelas possuem Row Level Security habilitado
+- Políticas baseadas em `auth.uid() = created_by`
+- Triggers automáticos para preenchimento do `created_by`
+- Função `is_admin()` para bypass administrativo
 
-## 🧪 Uso da Aplicação
+## 🛣️ Rotas
 
-1. **Cadastro/Login**: Crie uma conta ou faça login
-2. **Premissas**: Configure os parâmetros globais
-3. **Cadastros**: Adicione insumos, fornecedores e clientes
-4. **Simulação**: Crie cenários de confinamento
-5. **Resultados**: Analise KPIs e gráficos
-6. **Comparação**: Compare diferentes simulações
-7. **Upload**: Importe dados em lote
+- `/` - Dashboard principal
+- `/simulation` - Nova simulação / Editar simulação
+- `/simulations` - Lista de simulações
+- `/results/:id` - Detalhes dos resultados
+- `/compare` - Comparação de simulações
+- `/registries` - Gestão de registros (Insumos/Fornecedores/Clientes)
+- `/premises` - Configurações da propriedade
+- `/uploads` - Upload e importação de dados
 
-## 🔧 Principais Hooks
+## 📱 Design System
 
-- `useTableCRUD(tableName)`: CRUD genérico para tabelas
-- `useAuth()`: Contexto de autenticação
-- `useToast()`: Sistema de notificações
+### Cores e Tokens
+- Utiliza tokens semânticos definidos em `index.css`
+- Suporte completo a dark/light mode
+- Componentes shadcn/ui customizados
+- Paleta de cores consistente com gradientes
 
-## 📊 Funcionalidades de Negócio
+### Responsividade
+- Design mobile-first
+- Breakpoints: `sm`, `md`, `lg`, `xl`, `2xl`
+- Componentes adaptáveis para diferentes dispositivos
+- Sidebar colapsível em dispositivos móveis
 
-- Cálculo automático de KPIs em tempo real
-- Análise de sensibilidade (±5%, ±10%)
-- Duplicação de simulações para cenários
-- Comparação visual entre simulações
-- Importação em lote de planilhas
-- Gestão de premissas por usuário
-- Histórico de simulações
+## 🔒 Segurança
 
-## 🚀 Próximos Passos
+### Autenticação
+- Sistema completo via Supabase Auth
+- Persistência de sessão no localStorage
+- Refresh automático de tokens
+- Rotas protegidas com `ProtectedRoute`
 
-- [ ] Implementar exportação PDF/CSV dos resultados
-- [ ] Adicionar mais opções de análise de sensibilidade
-- [ ] Integração com APIs de preços em tempo real
-- [ ] Dashboard executivo com filtros avançados
-- [ ] Relatórios customizáveis
-- [ ] Notificações por email
+### Autorização
+- RLS em todas as tabelas sensíveis
+- Isolamento de dados por usuário
+- Políticas de admin para operações especiais
+- Validação tanto no frontend quanto no backend
 
----
+## 📈 Performance
 
-Desenvolvido com ❤️ para o setor pecuário brasileiro.
+### Otimizações
+- Lazy loading de componentes pesados
+- Memoização com `useMemo` e `useCallback`
+- Queries otimizadas com joins específicos
+- Debounce em campos de busca
+- Loading states em todas as operações async
+
+### Monitoramento
+- Error boundaries para captura de erros
+- Logs estruturados no console
+- Toast notifications para feedback do usuário
+- Estados de loading granulares
+
+Built with ❤️ using Lovable + Supabase
