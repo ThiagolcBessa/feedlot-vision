@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inputs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          notes: string | null
+          price: number
+          unit: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          notes?: string | null
+          price?: number
+          unit: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          price?: number
+          unit?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
+      premises: {
+        Row: {
+          admin_overhead_daily_per_head: number
+          capacity_head: number
+          created_at: string
+          created_by: string
+          default_mortality_pct: number
+          default_reject_pct: number
+          fixed_cost_daily_per_head: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_overhead_daily_per_head?: number
+          capacity_head?: number
+          created_at?: string
+          created_by: string
+          default_mortality_pct?: number
+          default_reject_pct?: number
+          fixed_cost_daily_per_head?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_overhead_daily_per_head?: number
+          capacity_head?: number
+          created_at?: string
+          created_by?: string
+          default_mortality_pct?: number
+          default_reject_pct?: number
+          fixed_cost_daily_per_head?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company_name: string | null
@@ -47,12 +149,188 @@ export type Database = {
         }
         Relationships: []
       }
+      simulation_results: {
+        Row: {
+          arroubas_gain: number
+          arroubas_hook: number
+          break_even_r_per_at: number
+          carcass_weight_kg: number
+          cost_per_animal: number
+          cost_per_arrouba: number
+          created_at: string
+          exit_weight_kg: number
+          id: string
+          margin_total: number
+          payback_days: number | null
+          roi_pct: number
+          simulation_id: string
+          spread_r_per_at: number
+        }
+        Insert: {
+          arroubas_gain: number
+          arroubas_hook: number
+          break_even_r_per_at: number
+          carcass_weight_kg: number
+          cost_per_animal: number
+          cost_per_arrouba: number
+          created_at?: string
+          exit_weight_kg: number
+          id?: string
+          margin_total: number
+          payback_days?: number | null
+          roi_pct: number
+          simulation_id: string
+          spread_r_per_at: number
+        }
+        Update: {
+          arroubas_gain?: number
+          arroubas_hook?: number
+          break_even_r_per_at?: number
+          carcass_weight_kg?: number
+          cost_per_animal?: number
+          cost_per_arrouba?: number
+          created_at?: string
+          exit_weight_kg?: number
+          id?: string
+          margin_total?: number
+          payback_days?: number | null
+          roi_pct?: number
+          simulation_id?: string
+          spread_r_per_at?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_simulation_results_simulation_id"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulations: {
+        Row: {
+          adg_kg_day: number
+          created_at: string
+          created_by: string
+          days_on_feed: number
+          depreciation_total: number
+          dmi_kg_day: number | null
+          dmi_pct_bw: number | null
+          entry_weight_kg: number
+          feed_cost_kg_dm: number
+          feed_waste_pct: number
+          financial_cost_total: number
+          health_cost_total: number
+          id: string
+          mortality_pct: number
+          notes: string | null
+          overhead_total: number
+          purchase_price_per_at: number | null
+          purchase_price_per_kg: number | null
+          selling_price_per_at: number
+          title: string
+          transport_cost_total: number
+          updated_at: string
+        }
+        Insert: {
+          adg_kg_day: number
+          created_at?: string
+          created_by: string
+          days_on_feed: number
+          depreciation_total?: number
+          dmi_kg_day?: number | null
+          dmi_pct_bw?: number | null
+          entry_weight_kg: number
+          feed_cost_kg_dm: number
+          feed_waste_pct?: number
+          financial_cost_total?: number
+          health_cost_total?: number
+          id?: string
+          mortality_pct?: number
+          notes?: string | null
+          overhead_total?: number
+          purchase_price_per_at?: number | null
+          purchase_price_per_kg?: number | null
+          selling_price_per_at: number
+          title: string
+          transport_cost_total?: number
+          updated_at?: string
+        }
+        Update: {
+          adg_kg_day?: number
+          created_at?: string
+          created_by?: string
+          days_on_feed?: number
+          depreciation_total?: number
+          dmi_kg_day?: number | null
+          dmi_pct_bw?: number | null
+          entry_weight_kg?: number
+          feed_cost_kg_dm?: number
+          feed_waste_pct?: number
+          financial_cost_total?: number
+          health_cost_total?: number
+          id?: string
+          mortality_pct?: number
+          notes?: string | null
+          overhead_total?: number
+          purchase_price_per_at?: number | null
+          purchase_price_per_kg?: number | null
+          selling_price_per_at?: number
+          title?: string
+          transport_cost_total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          city: string | null
+          code: string
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          code: string
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
