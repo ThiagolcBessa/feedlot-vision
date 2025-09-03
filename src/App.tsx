@@ -12,6 +12,10 @@ import Simulation from "./pages/Simulation";
 import Simulations from "./pages/Simulations";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
+import Premises from "./pages/Premises";
+import Registries from "./pages/Registries";
+import Uploads from "./pages/Uploads";
+import Compare from "./pages/Compare";
 
 const queryClient = new QueryClient();
 
@@ -65,35 +69,34 @@ const App = () => (
               </ProtectedRoute>
             } />
             
-            <Route path="/registry" element={
+            <Route path="/premises" element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-6">
-                    <h1 className="text-2xl font-bold">Registro de Dados</h1>
-                    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-                  </div>
+                  <Premises />
                 </AppLayout>
               </ProtectedRoute>
             } />
             
-            <Route path="/reports" element={
+            <Route path="/registries" element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-6">
-                    <h1 className="text-2xl font-bold">Relatórios Executivos</h1>
-                    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-                  </div>
+                  <Registries />
                 </AppLayout>
               </ProtectedRoute>
             } />
             
-            <Route path="/suppliers" element={
+            <Route path="/uploads" element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-6">
-                    <h1 className="text-2xl font-bold">Fornecedores e Clientes</h1>
-                    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-                  </div>
+                  <Uploads />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/compare" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Compare />
                 </AppLayout>
               </ProtectedRoute>
             } />

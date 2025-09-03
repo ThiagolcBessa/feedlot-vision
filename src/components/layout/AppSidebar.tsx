@@ -1,4 +1,4 @@
-import { BarChart3, Calculator, Database, Home, Settings, FileText, Users } from 'lucide-react';
+import { BarChart3, Calculator, Database, Home, Settings, FileText, Users, Upload, GitCompare, Building2 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -14,11 +14,12 @@ import {
 
 const items = [
   { title: 'Dashboard', url: '/', icon: Home },
+  { title: 'Premissas', url: '/premises', icon: Building2 },
   { title: 'Simulação', url: '/simulation', icon: Calculator },
-  { title: 'Resultados', url: '/results', icon: BarChart3 },
-  { title: 'Registros', url: '/registry', icon: Database },
-  { title: 'Relatórios', url: '/reports', icon: FileText },
-  { title: 'Fornecedores', url: '/suppliers', icon: Users },
+  { title: 'Simulações', url: '/simulations', icon: BarChart3 },
+  { title: 'Cadastros', url: '/registries', icon: Database },
+  { title: 'Comparar', url: '/compare', icon: GitCompare },
+  { title: 'Upload', url: '/uploads', icon: Upload },
 ];
 
 export function AppSidebar() {
