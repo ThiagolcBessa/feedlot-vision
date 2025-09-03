@@ -84,6 +84,7 @@ export type Database = {
         Row: {
           admin_overhead_daily_per_head: number
           capacity_head: number
+          carcass_yield_pct: number
           created_at: string
           created_by: string
           default_mortality_pct: number
@@ -95,6 +96,7 @@ export type Database = {
         Insert: {
           admin_overhead_daily_per_head?: number
           capacity_head?: number
+          carcass_yield_pct?: number
           created_at?: string
           created_by: string
           default_mortality_pct?: number
@@ -106,6 +108,7 @@ export type Database = {
         Update: {
           admin_overhead_daily_per_head?: number
           capacity_head?: number
+          carcass_yield_pct?: number
           created_at?: string
           created_by?: string
           default_mortality_pct?: number

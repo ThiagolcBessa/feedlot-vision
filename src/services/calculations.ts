@@ -27,7 +27,8 @@ export interface SimulationInput {
   admin_overhead_daily_per_head?: number;
 
   // Constants
-  carcass_yield_pct?: number; // Default 53%
+  carcass_yield_pct?: number; // From premises, default 53%
+  use_average_weight?: boolean; // DMI calculation method
 }
 
 export interface SimulationResult {
@@ -65,7 +66,7 @@ export function calculateSimulation(input: SimulationInput): SimulationResult {
   // 1. Exit Weight (kg)
   const exit_weight_kg = input.entry_weight_kg + (input.adg_kg_day * input.days_on_feed);
 
-  // 2. Carcass Weight (kg) - using 53% default yield
+  // 2. Carcass Weight (kg) - using premises carcass yield or default 53%
   const carcass_yield = input.carcass_yield_pct ? input.carcass_yield_pct / 100 : DEFAULT_CARCASS_YIELD;
   const carcass_weight_kg = exit_weight_kg * carcass_yield;
 
@@ -75,9 +76,25 @@ export function calculateSimulation(input: SimulationInput): SimulationResult {
   // 4. Arroubas Gain (@)
   const arroubas_gain = (exit_weight_kg - input.entry_weight_kg) / ARROUBA_WEIGHT_KG;
 
-  // 5. DMI kg/day (if not provided, calculate from % of body weight)
-  const dmi_kg_day_calculated = input.dmi_kg_day || 
-    ((input.entry_weight_kg + exit_weight_kg) / 2) * (input.dmi_pct_bw || 2.5) / 100;
+  // 5. DMI kg/day calculation with method selection
+  let dmi_kg_day_calculated: number;
+  
+  if (input.dmi_kg_day) {
+    // Direct DMI provided
+    dmi_kg_day_calculated = input.dmi_kg_day;
+  } else {
+    // Calculate from % of body weight
+    const dmi_pct_bw = input.dmi_pct_bw || 2.5;
+    
+    if (input.use_average_weight) {
+      // Use average body weight (recommended)
+      const avg_weight_kg = (input.entry_weight_kg + exit_weight_kg) / 2;
+      dmi_kg_day_calculated = avg_weight_kg * (dmi_pct_bw / 100);
+    } else {
+      // Use exit weight (original method)
+      dmi_kg_day_calculated = exit_weight_kg * (dmi_pct_bw / 100);
+    }
+  }
 
   // 6. Feed Cost Total
   const feed_cost_total = 

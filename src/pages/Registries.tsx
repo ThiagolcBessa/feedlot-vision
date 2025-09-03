@@ -1,661 +1,188 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Package, Truck, Users } from 'lucide-react';
 import { useTableCRUD } from '@/hooks/useTableCRUD';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { DataTable } from '@/components/DataTable';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/services/calculations';
 
-// Types
-interface Input {
-  id?: string;
-  name: string;
-  unit: string;
-  price: number;
-  vendor?: string;
-  notes?: string;
-}
-
-interface Supplier {
-  id?: string;
-  code: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  city?: string;
-  state?: string;
-}
-
-interface Client {
-  id?: string;
-  name: string;
-  email?: string;
-  phone?: string;
-}
-
-// Input management component
+// Inputs Tab Component
 function InputsTab() {
-  const { data: inputs, loading, create, update, remove } = useTableCRUD('inputs');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Input | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState<Partial<Input>>({
-    name: '',
-    unit: '',
-    price: 0,
-    vendor: '',
-    notes: '',
-  });
-
-  const filteredInputs = inputs.filter(input =>
-    input.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (input.vendor && input.vendor.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingItem?.id) {
-        await update(editingItem.id, formData);
-      } else {
-        await create(formData as Omit<Input, 'id' | 'created_at' | 'updated_at'>);
-      }
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      // Error handled by hook
+  const { data, loading, create, update, remove: deleteItem } = useTableCRUD('inputs');
+  
+  const createSeedInputs = async () => {
+    // Create seed data for inputs
+    const seedInputs = [
+      { name: 'Milho', unit: 'kg', price: 0.42, vendor: 'Fornecedor Padrão', notes: 'Grão básico para ração' },
+      { name: 'Ração Confinamento', unit: 'kg', price: 0.85, vendor: 'Fornecedor Padrão', notes: 'Ração completa para engorda' },
+      { name: 'Suplemento Mineral', unit: 'kg', price: 2.50, vendor: 'Fornecedor Padrão', notes: 'Suplementação mineral' },
+    ];
+    
+    for (const input of seedInputs) {
+      await create(input);
     }
   };
 
-  const resetForm = () => {
-    setFormData({ name: '', unit: '', price: 0, vendor: '', notes: '' });
-    setEditingItem(null);
-  };
+  const columns = [
+    { key: 'name', label: 'Nome', sortable: true },
+    { key: 'unit', label: 'Unidade' },
+    { 
+      key: 'price', 
+      label: 'Preço',
+      render: (value: number) => formatCurrency(value)
+    },
+    { key: 'vendor', label: 'Fornecedor' },
+    { key: 'notes', label: 'Observações' },
+  ];
 
-  const handleEdit = (input: Input) => {
-    setEditingItem(input);
-    setFormData(input);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    await remove(id);
-  };
+  const formFields = [
+    { key: 'name', label: 'Nome', type: 'text', required: true },
+    { key: 'unit', label: 'Unidade', type: 'text', required: true, placeholder: 'kg, ton, litro...' },
+    { key: 'price', label: 'Preço', type: 'number', step: '0.01', required: true },
+    { key: 'vendor', label: 'Fornecedor', type: 'text' },
+    { key: 'notes', label: 'Observações', type: 'textarea' },
+  ];
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Insumos</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Insumo
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar' : 'Adicionar'} Insumo</DialogTitle>
-                <DialogDescription>
-                  {editingItem ? 'Edite as informações' : 'Preencha os dados'} do insumo.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome *</Label>
-                    <Input
-                      id="name"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">Unidade *</Label>
-                    <Input
-                      id="unit"
-                      required
-                      placeholder="ex: kg, ton, R$/@"
-                      value={formData.unit}
-                      onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Preço *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vendor">Fornecedor</Label>
-                    <Input
-                      id="vendor"
-                      value={formData.vendor}
-                      onChange={(e) => setFormData(prev => ({ ...prev, vendor: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingItem ? 'Atualizar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Insumos
+            </CardTitle>
+            <CardDescription>
+              Gerencie os insumos utilizados no confinamento
+            </CardDescription>
+          </div>
+          {data.length === 0 && (
+            <Button onClick={createSeedInputs} variant="outline">
+              Criar Dados Exemplo
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar insumos..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-4">Carregando...</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Unidade</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead className="w-24">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInputs.map((input) => (
-                <TableRow key={input.id}>
-                  <TableCell className="font-medium">{input.name}</TableCell>
-                  <TableCell>{input.unit}</TableCell>
-                  <TableCell>R$ {input.price.toFixed(2)}</TableCell>
-                  <TableCell>{input.vendor || '-'}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(input)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir o insumo "{input.name}"?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(input.id!)}>
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <DataTable
+          data={data}
+          columns={columns}
+          loading={loading}
+          error={null}
+          onCreate={create}
+          onUpdate={update}
+          onDelete={deleteItem}
+          formFields={formFields}
+          searchPlaceholder="Buscar insumos..."
+          searchField="name"
+          emptyTitle="Nenhum insumo cadastrado"
+          emptyDescription="Comece cadastrando os insumos utilizados no seu confinamento"
+        />
       </CardContent>
     </Card>
   );
 }
 
-// Similar components for Suppliers and Clients (abbreviated for brevity)
+// Suppliers Tab Component
 function SuppliersTab() {
-  const { data: suppliers, loading, create, update, remove } = useTableCRUD('suppliers');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Supplier | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState<Partial<Supplier>>({
-    code: '',
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    state: '',
-  });
+  const { data, loading, create, update, remove: deleteItem } = useTableCRUD('suppliers');
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const columns = [
+    { key: 'code', label: 'Código', sortable: true },
+    { key: 'name', label: 'Nome', sortable: true },
+    { key: 'email', label: 'E-mail' },
+    { key: 'phone', label: 'Telefone' },
+    { 
+      key: 'location', 
+      label: 'Localização',
+      render: (_: any, row: any) => row.city && row.state ? `${row.city}, ${row.state}` : '-'
+    },
+  ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingItem?.id) {
-        await update(editingItem.id, formData);
-      } else {
-        await create(formData as Omit<Supplier, 'id' | 'created_at' | 'updated_at'>);
-      }
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      // Error handled by hook
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({ code: '', name: '', email: '', phone: '', city: '', state: '' });
-    setEditingItem(null);
-  };
-
-  const handleEdit = (supplier: Supplier) => {
-    setEditingItem(supplier);
-    setFormData(supplier);
-    setIsDialogOpen(true);
-  };
+  const formFields = [
+    { key: 'code', label: 'Código', type: 'text', required: true },
+    { key: 'name', label: 'Nome', type: 'text', required: true },
+    { key: 'email', label: 'E-mail', type: 'email' },
+    { key: 'phone', label: 'Telefone', type: 'tel' },
+    { key: 'city', label: 'Cidade', type: 'text' },
+    { key: 'state', label: 'Estado', type: 'text' },
+  ];
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Fornecedores</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Fornecedor
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar' : 'Adicionar'} Fornecedor</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="code">Código *</Label>
-                    <Input
-                      id="code"
-                      required
-                      value={formData.code}
-                      onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome *</Label>
-                    <Input
-                      id="name"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Cidade</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">Estado</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingItem ? 'Atualizar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Truck className="h-5 w-5" />
+          Fornecedores
+        </CardTitle>
+        <CardDescription>
+          Gerencie seus fornecedores de insumos e serviços
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar fornecedores..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Código</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Cidade</TableHead>
-              <TableHead className="w-24">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredSuppliers.map((supplier) => (
-              <TableRow key={supplier.id}>
-                <TableCell>{supplier.code}</TableCell>
-                <TableCell className="font-medium">{supplier.name}</TableCell>
-                <TableCell>{supplier.email || '-'}</TableCell>
-                <TableCell>{supplier.phone || '-'}</TableCell>
-                <TableCell>{supplier.city || '-'}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(supplier)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o fornecedor "{supplier.name}"?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => remove(supplier.id!)}>
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <DataTable
+          data={data}
+          columns={columns}
+          loading={loading}
+          error={null}
+          onCreate={create}
+          onUpdate={update}
+          onDelete={deleteItem}
+          formFields={formFields}
+          searchPlaceholder="Buscar fornecedores..."
+          searchField="name"
+          emptyTitle="Nenhum fornecedor cadastrado"
+          emptyDescription="Cadastre seus fornecedores para facilitar o controle de compras"
+        />
       </CardContent>
     </Card>
   );
 }
 
+// Clients Tab Component
 function ClientsTab() {
-  const { data: clients, loading, create, update, remove } = useTableCRUD('clients');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Client | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState<Partial<Client>>({
-    name: '',
-    email: '',
-    phone: '',
-  });
+  const { data, loading, create, update, remove: deleteItem } = useTableCRUD('clients');
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const columns = [
+    { key: 'name', label: 'Nome', sortable: true },
+    { key: 'email', label: 'E-mail' },
+    { key: 'phone', label: 'Telefone' },
+  ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingItem?.id) {
-        await update(editingItem.id, formData);
-      } else {
-        await create(formData as Omit<Client, 'id' | 'created_at' | 'updated_at'>);
-      }
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      // Error handled by hook
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '' });
-    setEditingItem(null);
-  };
-
-  const handleEdit = (client: Client) => {
-    setEditingItem(client);
-    setFormData(client);
-    setIsDialogOpen(true);
-  };
+  const formFields = [
+    { key: 'name', label: 'Nome', type: 'text', required: true },
+    { key: 'email', label: 'E-mail', type: 'email' },
+    { key: 'phone', label: 'Telefone', type: 'tel' },
+  ];
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Clientes</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar' : 'Adicionar'} Cliente</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome *</Label>
-                  <Input
-                    id="name"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">
-                    {editingItem ? 'Atualizar' : 'Criar'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Clientes
+        </CardTitle>
+        <CardDescription>
+          Gerencie seus clientes e compradores
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar clientes..."
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead className="w-24">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow key={client.id}>
-                <TableCell className="font-medium">{client.name}</TableCell>
-                <TableCell>{client.email || '-'}</TableCell>
-                <TableCell>{client.phone || '-'}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(client)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o cliente "{client.name}"?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => remove(client.id!)}>
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <DataTable
+          data={data}
+          columns={columns}
+          loading={loading}
+          error={null}
+          onCreate={create}
+          onUpdate={update}
+          onDelete={deleteItem}
+          formFields={formFields}
+          searchPlaceholder="Buscar clientes..."
+          searchField="name"
+          emptyTitle="Nenhum cliente cadastrado"
+          emptyDescription="Cadastre seus clientes para facilitar o controle de vendas"
+        />
       </CardContent>
     </Card>
   );
@@ -663,30 +190,39 @@ function ClientsTab() {
 
 export default function Registries() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Cadastros</h1>
-        <p className="text-muted-foreground mt-2">
-          Gerencie seus insumos, fornecedores e clientes
+        <p className="text-muted-foreground">
+          Gerencie insumos, fornecedores e clientes do seu confinamento
         </p>
       </div>
 
       <Tabs defaultValue="inputs" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="inputs">Insumos</TabsTrigger>
-          <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
+          <TabsTrigger value="inputs" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Insumos
+          </TabsTrigger>
+          <TabsTrigger value="suppliers" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Fornecedores
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Clientes
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="inputs" className="space-y-4">
+
+        <TabsContent value="inputs">
           <InputsTab />
         </TabsContent>
-        
-        <TabsContent value="suppliers" className="space-y-4">
+
+        <TabsContent value="suppliers">
           <SuppliersTab />
         </TabsContent>
-        
-        <TabsContent value="clients" className="space-y-4">
+
+        <TabsContent value="clients">
           <ClientsTab />
         </TabsContent>
       </Tabs>
