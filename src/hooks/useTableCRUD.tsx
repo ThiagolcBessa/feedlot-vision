@@ -42,26 +42,27 @@ export function useTableCRUD(tableName: 'inputs' | 'suppliers' | 'clients' | 'pr
 
   const createSeedInputs = async () => {
     try {
-      const seedInputs = [
-        { name: 'Milho', unit: 'kg', price: 0.42, vendor: 'Fornecedor Padrão', notes: 'Grão básico para ração' },
-        { name: 'Ração Confinamento', unit: 'kg', price: 0.85, vendor: 'Fornecedor Padrão', notes: 'Ração completa para engorda' },
-        { name: 'Suplemento Mineral', unit: 'kg', price: 2.50, vendor: 'Fornecedor Padrão', notes: 'Suplementação mineral' },
-        { name: 'Medicamentos', unit: 'cabeça', price: 45.00, vendor: 'Fornecedor Padrão', notes: 'Custos veterinários médios' },
-        { name: 'Transporte', unit: 'cabeça', price: 25.00, vendor: 'Fornecedor Padrão', notes: 'Frete médio por animal' }
-      ];
-
-      const { error } = await supabase.from('inputs').insert(seedInputs);
+      // Use direct insert with triggers handling created_by
+      const { error: insertError } = await supabase
+        .from('inputs')
+        .insert([
+          { name: 'Milho', unit: 'kg', price: 0.42, vendor: 'Fornecedor Padrão', notes: 'Grão básico para ração' },
+          { name: 'Ração Confinamento', unit: 'kg', price: 0.85, vendor: 'Fornecedor Padrão', notes: 'Ração completa para engorda' },
+          { name: 'Suplemento Mineral', unit: 'kg', price: 2.50, vendor: 'Fornecedor Padrão', notes: 'Suplementação mineral' },
+          { name: 'Medicamentos', unit: 'cabeça', price: 45.00, vendor: 'Fornecedor Padrão', notes: 'Custos veterinários médios' },
+          { name: 'Transporte', unit: 'cabeça', price: 25.00, vendor: 'Fornecedor Padrão', notes: 'Frete médio por animal' }
+        ] as any[]);
       
-      if (!error) {
-        // Reload data to show the new seed inputs
-        const { data: newData } = await supabase
-          .from(tableName)
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (newData) {
-          setData(newData);
-        }
+      if (insertError) throw insertError;
+      
+      // Reload data to show the new seed inputs
+      const { data: newData } = await supabase
+        .from(tableName)
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (newData) {
+        setData(newData);
       }
     } catch (error) {
       console.error('Error creating seed inputs:', error);

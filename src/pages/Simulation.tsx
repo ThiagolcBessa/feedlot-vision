@@ -186,7 +186,7 @@ export default function Simulation() {
         if (simError) throw simError;
         simulation = data;
       } else {
-        // Create new simulation
+        // Create new simulation  
         const { data, error: simError } = await supabase
           .from('simulations')
           .insert({
@@ -208,7 +208,8 @@ export default function Simulation() {
             feed_waste_pct: formData.feed_waste_pct!,
             mortality_pct: formData.mortality_pct!,
             notes: formData.notes,
-          })
+            created_by: user.id,
+          } as any)
           .select()
           .single();
 

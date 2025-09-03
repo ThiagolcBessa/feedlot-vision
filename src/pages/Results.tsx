@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatPercentage, formatWeight, formatArroubas } from '@/services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -51,6 +52,7 @@ interface SimulationWithResults {
 export default function Results() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [simulation, setSimulation] = useState<SimulationWithResults | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +103,8 @@ export default function Results() {
           selling_price_per_at: simulation.selling_price_per_at,
           feed_cost_kg_dm: simulation.feed_cost_kg_dm,
           notes: simulation.notes,
-        })
+          created_by: user?.id,
+        } as any)
         .select()
         .single();
 
