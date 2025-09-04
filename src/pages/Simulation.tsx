@@ -178,14 +178,14 @@ export default function Simulation() {
     depreciation_total: formData.depreciation_total || 0,
     overhead_total: formData.overhead_total || 0,
     negotiation: {
-      modalidade: businessData.modalidade || '',
+      modalidade: businessData?.modalidade || '',
       service_price: matrixSuggestions?.service_price || 0,
-      qtd_animais: businessData.qtd_animais,
-      quebra_fazenda_pct: businessData.breakage_farm_pct,
-      quebra_balanca_pct: businessData.breakage_scale_pct,
-      agio_magro_r: businessData.agio_r,
-      rendimento_boi_magro_prod_pct: businessData.lean_cattle_yield_at,
-      preco_boi_magro_r_por_arroba: businessData.price_lean_r_per_at,
+      qtd_animais: businessData?.qtd_animais || 0,
+      quebra_fazenda_pct: businessData?.breakage_farm_pct || 0,
+      quebra_balanca_pct: businessData?.breakage_scale_pct || 0,
+      agio_magro_r: businessData?.agio_r || 0,
+      rendimento_boi_magro_prod_pct: businessData?.lean_cattle_yield_at || 0,
+      preco_boi_magro_r_por_arroba: businessData?.price_lean_r_per_at || 0,
     }
   };
 
@@ -209,15 +209,15 @@ export default function Simulation() {
 
   // Load matrix suggestions when business data changes
   useEffect(() => {
-    if (businessData.unit_code && 
-        businessData.modalidade && 
-        businessData.dieta && 
-        businessData.tipo_animal && 
+    if (businessData?.unit_code && 
+        businessData?.modalidade && 
+        businessData?.dieta && 
+        businessData?.tipo_animal && 
         formData.entry_weight_kg) {
       
       loadMatrixSuggestions();
     }
-  }, [businessData.unit_code, businessData.modalidade, businessData.dieta, businessData.tipo_animal, formData.entry_weight_kg]);
+  }, [businessData?.unit_code, businessData?.modalidade, businessData?.dieta, businessData?.tipo_animal, formData.entry_weight_kg]);
 
   const handleInputChange = (field: string, value: any) => {
     const newFormData = { ...formData, [field]: value };
@@ -368,7 +368,7 @@ export default function Simulation() {
   };
 
   const loadMatrixSuggestions = async () => {
-    if (!businessData.unit_code || !businessData.modalidade || !businessData.dieta || !businessData.tipo_animal || !formData.entry_weight_kg) {
+    if (!businessData?.unit_code || !businessData?.modalidade || !businessData?.dieta || !businessData?.tipo_animal || !formData.entry_weight_kg) {
       return;
     }
 
@@ -626,7 +626,7 @@ export default function Simulation() {
                         <Input
                           id="nego_date"
                           type="date"
-                          value={businessData.negotiation_date.toISOString().split('T')[0]}
+                          value={businessData?.negotiation_date ? businessData.negotiation_date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                           onChange={(e) => handleBusinessDataChange('negotiation_date', new Date(e.target.value))}
                           className="bg-blue-50 border-blue-200"
                         />
@@ -997,24 +997,24 @@ export default function Simulation() {
                           arroubas_magro: result.arroubas_magro || (formData.entry_weight_kg || 0) / 15,
                           arroubas_gain: result.arroubas_gain,
                           days_on_feed: formData.days_on_feed || 0,
-                          qtd_animais: businessData.qtd_animais,
-                          price_fat_r_per_at: businessData.price_fat_r_per_at,
-                          price_lean_r_per_at: businessData.price_lean_r_per_at,
-                          agio_r: businessData.agio_r,
+                          qtd_animais: businessData?.qtd_animais || 0,
+                          price_fat_r_per_at: businessData?.price_fat_r_per_at || 0,
+                          price_lean_r_per_at: businessData?.price_lean_r_per_at || 0,
+                          agio_r: businessData?.agio_r || 0,
                           service_price: matrixSuggestions?.service_price || 0,
-                          modalidade: businessData.modalidade || 'Diária',
+                          modalidade: businessData?.modalidade || 'Diária',
                           taxa_abate: 0,
                           frete_pecuarista: 0,
-                          investment_boi_magro: (result.arroubas_magro || (formData.entry_weight_kg || 0) / 15) * businessData.price_lean_r_per_at,
+                          investment_boi_magro: (result.arroubas_magro || (formData.entry_weight_kg || 0) / 15) * (businessData?.price_lean_r_per_at || 0),
                         }}
                       />
                       <DreBoitel 
                         data={{
                           service_price: matrixSuggestions?.service_price || 0,
-                          modalidade: businessData.modalidade || 'Diária',
+                          modalidade: businessData?.modalidade || 'Diária',
                           arroubas_gain: result.arroubas_gain,
                           days_on_feed: formData.days_on_feed || 0,
-                          qtd_animais: businessData.qtd_animais,
+                          qtd_animais: businessData?.qtd_animais || 0,
                           feed_cost_total: result.feed_cost_total,
                           dmi_kg_day: result.dmi_kg_day_calculated || 10,
                           feed_cost_per_kg: formData.feed_cost_kg_dm || 0,
