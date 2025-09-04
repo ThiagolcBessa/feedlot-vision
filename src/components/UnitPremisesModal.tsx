@@ -71,10 +71,16 @@ export function UnitPremisesModal({ open, onClose, matrixRow, onApplySuggestion 
             <CardHeader>
               <CardTitle className="text-sm font-medium">Informações do Produto</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Etiqueta:</span>
-                <Badge variant="secondary">{matrixRow.concat_label}</Badge>
+                <Badge variant="secondary" className="font-mono">
+                  {matrixRow.concat_label}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Modalidade:</span>
+                <Badge variant="outline">{matrixRow.modalidade}</Badge>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Faixa:</span>
@@ -93,21 +99,30 @@ export function UnitPremisesModal({ open, onClose, matrixRow, onApplySuggestion 
             <CardHeader>
               <CardTitle className="text-sm font-medium">Preços de Serviço</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Base:</span>
-                <span className="text-sm font-medium">
-                  {matrixRow.tabela_base_r_por_arroba ? formatCurrency(matrixRow.tabela_base_r_por_arroba) + '/@ ' : 'N/A'}
-                  {matrixRow.diaria_r_por_cab_dia ? formatCurrency(matrixRow.diaria_r_por_cab_dia) + '/cab/dia' : ''}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Final:</span>
-                <span className="text-sm font-medium text-primary">
-                  {matrixRow.tabela_final_r_por_arroba ? formatCurrency(matrixRow.tabela_final_r_por_arroba) + '/@ ' : 'N/A'}
-                  {matrixRow.diaria_r_por_cab_dia ? formatCurrency(matrixRow.diaria_r_por_cab_dia) + '/cab/dia' : ''}
-                </span>
-              </div>
+            <CardContent className="space-y-3">
+              {matrixRow.modalidade === 'Arroba Prod.' ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Base:</span>
+                    <span className="text-sm font-medium">
+                      {matrixRow.tabela_base_r_por_arroba ? formatCurrency(matrixRow.tabela_base_r_por_arroba) + ' /@ ' : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Final:</span>
+                    <span className="text-sm font-semibold text-primary">
+                      {matrixRow.tabela_final_r_por_arroba ? formatCurrency(matrixRow.tabela_final_r_por_arroba) + ' /@' : 'N/A'}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Diária:</span>
+                  <span className="text-sm font-semibold text-primary">
+                    {matrixRow.diaria_r_por_cab_dia ? formatCurrency(matrixRow.diaria_r_por_cab_dia) + ' /cab/dia' : 'N/A'}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
