@@ -582,11 +582,7 @@ export default function Results() {
                   modalidade: 'Diária', // From negotiation
                   taxa_abate: 0,
                   frete_pecuarista: 0,
-                  result_per_head: result.margin_total,
-                  result_total: result.margin_total,
-                  cost_per_at_produced: result.cost_per_arrouba,
-                  result_per_at_bm: result.margin_total / (simulation.entry_weight_kg / 15),
-                  monthly_return_pct: (result.roi_pct / (simulation.days_on_feed / 30)) || 0,
+                  investment_boi_magro: (simulation.entry_weight_kg / 15) * 300,
                 }}
               />
               <DreBoitel 
@@ -596,18 +592,20 @@ export default function Results() {
                   arroubas_gain: result.arroubas_gain,
                   days_on_feed: simulation.days_on_feed,
                   qtd_animais: 100,
-                  feed_cost_total: 0,
-                  freight_confinement: 0,
-                  sanitary_mortality: 0,
-                  ctr_cost: 0,
-                  cf_cost: 0,
-                  corp_cost: 0,
-                  depreciation_cost: 0,
-                  financial_cost: 0,
-                  other_fixed: 0,
-                  result_jbs_per_head: 0,
-                  result_jbs_total: 0,
-                  result_per_arroba: 0,
+                  feed_cost_total: 5000, // Mock value
+                  dmi_kg_day: 10, // Mock DMI
+                  feed_cost_per_kg: simulation.feed_cost_kg_dm,
+                  feed_waste_pct: 5,
+                  freight_confinement: 500, // Mock value
+                  health_cost_total: 45, // Mock value
+                  mortality_pct: 2,
+                  mortality_cost: 100, // Mock value
+                  transport_cost_total: 25, // Mock value
+                  fixed_cost_daily_total: 300, // Mock value
+                  overhead_total: 150, // Mock value
+                  depreciation_total: 80, // Mock value
+                  financial_cost_total: 50, // Mock value
+                  other_fixed_total: 25,
                 }}
               />
             </div>

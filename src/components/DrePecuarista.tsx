@@ -21,31 +21,29 @@ interface DrePecuaristaProps {
     // Costs & Fees  
     taxa_abate?: number;
     frete_pecuarista?: number;
+    icms_devolucao?: number;
 
-    // Results
-    result_per_head: number;
-    result_total: number;
-    cost_per_at_produced: number;
-    result_per_at_bm: number;
-    monthly_return_pct: number;
+    // Investment for return calculation
+    investment_boi_magro: number;
   };
   className?: string;
 }
 
 export function DrePecuarista({ data, className }: DrePecuaristaProps) {
-  // Calculations
+  // Revenue calculations
   const revenue_per_head = data.arroubas_hook * data.price_fat_r_per_at;
   const revenue_total = revenue_per_head * data.qtd_animais;
 
-  const lean_cost_per_head = (data.arroubas_magro * data.price_lean_r_per_at) + data.agio_r;
+  // Cost calculations
+  const lean_cost_per_head = (data.arroubas_magro * data.price_lean_r_per_at) + (data.agio_r || 0);
   const lean_cost_total = lean_cost_per_head * data.qtd_animais;
 
   const fattening_cost_per_head = data.modalidade === 'Arroba Prod.' 
     ? data.arroubas_gain * data.service_price
-    : data.days_on_feed * (data.service_price / 30); // Convert daily rate
+    : data.days_on_feed * data.service_price; // Daily service price
   const fattening_cost_total = fattening_cost_per_head * data.qtd_animais;
 
-  const fees_freight_per_head = (data.taxa_abate || 0) + (data.frete_pecuarista || 0);
+  const fees_freight_per_head = (data.taxa_abate || 0) + (data.frete_pecuarista || 0) + (data.icms_devolucao || 0);
   const fees_freight_total = fees_freight_per_head * data.qtd_animais;
 
   const total_cost_per_head = lean_cost_per_head + fattening_cost_per_head + fees_freight_per_head;
@@ -53,6 +51,15 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
 
   const result_per_head = revenue_per_head - total_cost_per_head;
   const result_total = result_per_head * data.qtd_animais;
+
+  // Additional metrics
+  const cost_per_at_produced = data.arroubas_gain > 0 ? fattening_cost_per_head / data.arroubas_gain : 0;
+  const result_per_at_bm = data.arroubas_magro > 0 ? result_per_head / data.arroubas_magro : 0;
+  
+  // Monthly return % = (Result / Investment) / (Days/30) * 100
+  const monthly_return_pct = data.investment_boi_magro > 0 && data.days_on_feed > 0 
+    ? (result_per_head / data.investment_boi_magro) / (data.days_on_feed / 30) * 100 
+    : 0;
 
   const dre_lines = [
     {
@@ -67,10 +74,10 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
       ]
     },
     {
-      label: 'CUSTOS',
+      label: 'CUSTOS E DESPESAS',
       items: [
         {
-          label: `Boi Magro (${data.arroubas_magro.toFixed(2)}@ × ${formatCurrency(data.price_lean_r_per_at)}${data.agio_r !== 0 ? ` ${data.agio_r > 0 ? '+' : ''}${formatCurrency(data.agio_r)}` : ''})`,
+          label: `Boi Magro (${data.arroubas_magro.toFixed(2)}@ × ${formatCurrency(data.price_lean_r_per_at)}${(data.agio_r || 0) !== 0 ? ` ${(data.agio_r || 0) > 0 ? '+' : ''}${formatCurrency(data.agio_r || 0)}` : ''})`,
           per_head: lean_cost_per_head,
           total: lean_cost_total,
           bold: false
@@ -82,7 +89,7 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
           bold: false
         },
         {
-          label: 'Taxas + Frete',
+          label: 'Taxas + Frete + ICMS',
           per_head: fees_freight_per_head,
           total: fees_freight_total,
           bold: false
@@ -90,7 +97,7 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
       ]
     },
     {
-      label: 'RESULTADO',
+      label: 'INDICADORES DE RESULTADO',
       items: [
         {
           label: 'Resultado Líquido',
@@ -100,19 +107,19 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
         },
         {
           label: 'Custo por @ Produzida',
-          per_head: data.cost_per_at_produced,
-          total: data.cost_per_at_produced * data.qtd_animais * data.arroubas_gain,
+          per_head: cost_per_at_produced,
+          total: cost_per_at_produced * data.qtd_animais,
           bold: false
         },
         {
           label: 'Resultado por @ BM',
-          per_head: data.result_per_at_bm,
-          total: data.result_per_at_bm * data.qtd_animais * data.arroubas_magro,
+          per_head: result_per_at_bm,
+          total: result_per_at_bm * data.qtd_animais,
           bold: false
         },
         {
           label: 'Retorno Mensal (%)',
-          per_head: data.monthly_return_pct,
+          per_head: monthly_return_pct,
           total: null, // No total for percentage
           bold: false,
           isPercentage: true
@@ -130,6 +137,13 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* Column Headers */}
+          <div className="grid grid-cols-3 gap-4 text-xs font-medium text-muted-foreground border-b pb-2">
+            <div>Item</div>
+            <div className="text-right">Unitário/Boi</div>
+            <div className="text-right">Lote ({data.qtd_animais} cab.)</div>
+          </div>
+
           {dre_lines.map((section, sectionIndex) => (
             <div key={sectionIndex}>
               <h4 className="font-semibold text-sm mb-2 text-muted-foreground uppercase tracking-wide">
@@ -142,7 +156,9 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
                     className={`grid grid-cols-3 gap-4 py-1 text-sm ${
                       item.bold ? 'font-bold border-t border-border pt-2' : ''
                     } ${
-                      section.label === 'RESULTADO' ? 'text-primary' : ''
+                      section.label === 'INDICADORES DE RESULTADO' ? (
+                        result_per_head >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                      ) : ''
                     }`}
                   >
                     <div className="col-span-1 text-left">{item.label}</div>
@@ -163,13 +179,6 @@ export function DrePecuarista({ data, className }: DrePecuaristaProps) {
               </div>
             </div>
           ))}
-          
-          {/* Column Headers */}
-          <div className="grid grid-cols-3 gap-4 text-xs font-medium text-muted-foreground border-b pb-1 mt-4 pt-4">
-            <div>Item</div>
-            <div className="text-right">Unitário/Boi</div>
-            <div className="text-right">Lote ({data.qtd_animais} cab.)</div>
-          </div>
         </div>
       </CardContent>
     </Card>

@@ -1003,11 +1003,7 @@ export default function Simulation() {
                           modalidade: businessData.modalidade || 'Diária',
                           taxa_abate: 0,
                           frete_pecuarista: 0,
-                          result_per_head: result.margin_total,
-                          result_total: result.margin_total,
-                          cost_per_at_produced: result.cost_per_arrouba,
-                          result_per_at_bm: result.result_per_at_bm || 0,
-                          monthly_return_pct: result.monthly_return_pct || 0,
+                          investment_boi_magro: (result.arroubas_magro || (formData.entry_weight_kg || 0) / 15) * businessData.price_lean_r_per_at,
                         }}
                       />
                       <DreBoitel 
@@ -1018,17 +1014,19 @@ export default function Simulation() {
                           days_on_feed: formData.days_on_feed || 0,
                           qtd_animais: businessData.qtd_animais,
                           feed_cost_total: result.feed_cost_total,
-                          freight_confinement: result.freight_confinement,
-                          sanitary_mortality: result.sanitary_mortality,
-                          ctr_cost: result.ctr_cost,
-                          cf_cost: result.cf_cost,
-                          corp_cost: result.corp_cost,
-                          depreciation_cost: result.depreciation_cost,
-                          financial_cost: result.financial_cost,
-                          other_fixed: result.other_fixed,
-                          result_jbs_per_head: result.result_jbs_per_head,
-                          result_jbs_total: result.result_jbs_total,
-                          result_per_arroba: result.result_per_arroba,
+                          dmi_kg_day: result.dmi_kg_day_calculated || 10,
+                          feed_cost_per_kg: formData.feed_cost_kg_dm || 0,
+                          feed_waste_pct: formData.feed_waste_pct || 5,
+                          freight_confinement: 0,
+                          health_cost_total: formData.health_cost_total || 0,
+                          mortality_pct: formData.mortality_pct || 2,
+                          mortality_cost: result.mortality_cost || 0,
+                          transport_cost_total: formData.transport_cost_total || 0,
+                          fixed_cost_daily_total: result.fixed_admin_total || 0,
+                          overhead_total: formData.overhead_total || 0,
+                          depreciation_total: formData.depreciation_total || 0,
+                          financial_cost_total: formData.financial_cost_total || 0,
+                          other_fixed_total: 0,
                         }}
                       />
                     </div>
