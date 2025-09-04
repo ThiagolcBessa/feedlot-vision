@@ -22,6 +22,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatPercentage, formatWeight, formatArroubas } from '@/services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { DrePecuarista } from '@/components/DrePecuarista';
+import { DreBoitel } from '@/components/DreBoitel';
 
 interface SimulationWithResults {
   id: string;
@@ -529,6 +531,55 @@ export default function Results() {
               </CardContent>
             </Card>
           )}
+
+          {/* DRE Sections */}
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-6">Demonstrações de Resultado (DRE)</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <DrePecuarista 
+                data={{
+                  arroubas_hook: result.arroubas_hook,
+                  arroubas_magro: simulation.entry_weight_kg / 15,
+                  arroubas_gain: result.arroubas_gain,
+                  days_on_feed: simulation.days_on_feed,
+                  qtd_animais: 100, // Default, should come from negotiation
+                  price_fat_r_per_at: simulation.selling_price_per_at,
+                  price_lean_r_per_at: 300, // From negotiation
+                  agio_r: 0, // From negotiation
+                  service_price: 220, // From matrix/negotiation
+                  modalidade: 'Diária', // From negotiation
+                  taxa_abate: 0,
+                  frete_pecuarista: 0,
+                  result_per_head: result.margin_total,
+                  result_total: result.margin_total,
+                  cost_per_at_produced: result.cost_per_arrouba,
+                  result_per_at_bm: result.margin_total / (simulation.entry_weight_kg / 15),
+                  monthly_return_pct: (result.roi_pct / (simulation.days_on_feed / 30)) || 0,
+                }}
+              />
+              <DreBoitel 
+                data={{
+                  service_price: 220,
+                  modalidade: 'Diária',
+                  arroubas_gain: result.arroubas_gain,
+                  days_on_feed: simulation.days_on_feed,
+                  qtd_animais: 100,
+                  feed_cost_total: 0,
+                  freight_confinement: 0,
+                  sanitary_mortality: 0,
+                  ctr_cost: 0,
+                  cf_cost: 0,
+                  corp_cost: 0,
+                  depreciation_cost: 0,
+                  financial_cost: 0,
+                  other_fixed: 0,
+                  result_jbs_per_head: 0,
+                  result_jbs_total: 0,
+                  result_per_arroba: 0,
+                }}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <Card>

@@ -30,6 +30,8 @@ import { UnitPremisesModal } from '@/components/UnitPremisesModal';
 import { HistoricalHint } from '@/components/HistoricalHint';
 import { SaveOrchestrator } from '@/services/saveOrchestrator';
 import { businessDataSchema, simulationFormSchema } from '@/schemas/simulationSchema';
+import { DrePecuarista } from '@/components/DrePecuarista';
+import { DreBoitel } from '@/components/DreBoitel';
 
 export default function Simulation() {
   const { user } = useAuth();
@@ -806,7 +808,55 @@ export default function Simulation() {
                       onChange={(e) => handleInputChange('dmi_kg_day', Number(e.target.value))}
                       className="bg-blue-50 border-blue-200"
                     />
-                  </div>
+              </div>
+              
+              {/* Live DRE Preview */}
+              {result && (
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <DrePecuarista 
+                    data={{
+                      arroubas_hook: result.arroubas_hook,
+                      arroubas_magro: result.arroubas_magro || (formData.entry_weight_kg || 0) / 15,
+                      arroubas_gain: result.arroubas_gain,
+                      days_on_feed: formData.days_on_feed || 0,
+                      qtd_animais: businessData.qtd_animais,
+                      price_fat_r_per_at: businessData.price_fat_r_per_at,
+                      price_lean_r_per_at: businessData.price_lean_r_per_at,
+                      agio_r: businessData.agio_r,
+                      service_price: matrixSuggestions?.service_price || 0,
+                      modalidade: businessData.modalidade || 'Diária',
+                      taxa_abate: 0,
+                      frete_pecuarista: 0,
+                      result_per_head: result.margin_total,
+                      result_total: result.margin_total,
+                      cost_per_at_produced: result.cost_per_arrouba,
+                      result_per_at_bm: result.result_per_at_bm || 0,
+                      monthly_return_pct: result.monthly_return_pct || 0,
+                    }}
+                  />
+                  <DreBoitel 
+                    data={{
+                      service_price: matrixSuggestions?.service_price || 0,
+                      modalidade: businessData.modalidade || 'Diária',
+                      arroubas_gain: result.arroubas_gain,
+                      days_on_feed: formData.days_on_feed || 0,
+                      qtd_animais: businessData.qtd_animais,
+                      feed_cost_total: result.feed_cost_total,
+                      freight_confinement: 0,
+                      sanitary_mortality: 0,
+                      ctr_cost: 0,
+                      cf_cost: 0,
+                      corp_cost: 0,
+                      depreciation_cost: 0,
+                      financial_cost: 0,
+                      other_fixed: 0,
+                      result_jbs_per_head: 0,
+                      result_jbs_total: 0,
+                      result_per_arroba: 0,
+                    }}
+                  />
+                </div>
+              )}
                   <div className="space-y-2">
                     <Label htmlFor="feed_cost">Custo Ração (R$/kg MS)</Label>
                     <Input
