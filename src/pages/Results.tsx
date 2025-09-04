@@ -610,6 +610,194 @@ export default function Results() {
               />
             </div>
           </div>
+
+          {/* Double Sensitivity Analysis */}
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold mb-6">Análise de Sensibilidade Dupla</h2>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Sensibilidade: Preço @ Gordo vs. Custo da Ração
+                </CardTitle>
+                <CardDescription>
+                  Impacto de variações nos principais fatores de mercado (±5% e ±10%)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  // Build simulation input from current results
+                  const sensitivityInput: SimulationInput = {
+                    entry_weight_kg: simulation.entry_weight_kg,
+                    days_on_feed: simulation.days_on_feed,
+                    adg_kg_day: simulation.adg_kg_day,
+                    dmi_pct_bw: simulation.dmi_pct_bw || 2.5,
+                    mortality_pct: 2.0,
+                    feed_waste_pct: 5.0,
+                    selling_price_per_at: simulation.selling_price_per_at,
+                    feed_cost_kg_dm: simulation.feed_cost_kg_dm,
+                    health_cost_total: 45,
+                    transport_cost_total: 25,
+                    financial_cost_total: 15,
+                    depreciation_total: 8,
+                    overhead_total: 12,
+                    fixed_cost_daily_per_head: 0,
+                    admin_overhead_daily_per_head: 0,
+                    carcass_yield_pct: 53,
+                    use_average_weight: true,
+                  };
+
+                  // Calculate all sensitivity scenarios
+                  const deltas = [-10, -5, 0, 5, 10];
+                  const sensitivityData = deltas.flatMap(priceDelta =>
+                    deltas.map(feedDelta => 
+                      calculateDoubleSensitivity(sensitivityInput, priceDelta, feedDelta)
+                    )
+                  );
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Sensitivity Table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b-2 border-border">
+                              <th className="text-left p-3 font-medium">Cenário</th>
+                              <th className="text-right p-3 font-medium">Spread (R$/@)</th>
+                              <th className="text-right p-3 font-medium">Break-even (R$/@)</th>
+                              <th className="text-right p-3 font-medium">ROI (%)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sensitivityData.map((item, index) => {
+                              const isBaseline = item.price_delta === 0 && item.feed_delta === 0;
+                              const isPositive = item.roi > 15;
+                              const isNegative = item.roi < 5;
+                              
+                              return (
+                                <tr 
+                                  key={index}
+                                  className={`border-b border-border hover:bg-muted/50 ${
+                                    isBaseline ? 'bg-blue-50/50 dark:bg-blue-950/20 font-medium' : ''
+                                  }`}
+                                >
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm">{item.scenario}</span>
+                                      {isBaseline && (
+                                        <Badge variant="secondary" className="text-xs">Base</Badge>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="text-right p-3 text-sm font-mono">
+                                    {formatCurrency(item.spread)}
+                                  </td>
+                                  <td className="text-right p-3 text-sm font-mono">
+                                    {formatCurrency(item.break_even)}
+                                  </td>
+                                  <td className={`text-right p-3 text-sm font-mono ${
+                                    isPositive ? 'text-green-600 dark:text-green-400' :
+                                    isNegative ? 'text-red-600 dark:text-red-400' : ''
+                                  }`}>
+                                    {formatPercentage(item.roi)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Visual Summary Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {(() => {
+                          const baselineScenario = sensitivityData.find(s => s.price_delta === 0 && s.feed_delta === 0);
+                          const bestScenario = sensitivityData.reduce((best, current) => 
+                            current.roi > best.roi ? current : best
+                          );
+                          const worstScenario = sensitivityData.reduce((worst, current) => 
+                            current.roi < worst.roi ? current : worst
+                          );
+
+                          return (
+                            <>
+                              <Card className="border-blue-200 dark:border-blue-800">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                        Cenário Base
+                                      </p>
+                                      <p className="text-lg font-bold">
+                                        {formatPercentage(baselineScenario?.roi || 0)}
+                                      </p>
+                                    </div>
+                                    <Target className="h-8 w-8 text-blue-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card className="border-green-200 dark:border-green-800">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                                        Melhor Cenário
+                                      </p>
+                                      <p className="text-lg font-bold">
+                                        {formatPercentage(bestScenario.roi)}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {bestScenario.scenario}
+                                      </p>
+                                    </div>
+                                    <TrendingUp className="h-8 w-8 text-green-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card className="border-red-200 dark:border-red-800">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                                        Pior Cenário
+                                      </p>
+                                      <p className="text-lg font-bold">
+                                        {formatPercentage(worstScenario.roi)}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {worstScenario.scenario}
+                                      </p>
+                                    </div>
+                                    <TrendingDown className="h-8 w-8 text-red-500" />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Insights */}
+                      <div className="bg-muted/50 rounded-lg p-4">
+                        <h4 className="font-medium mb-2 flex items-center gap-2">
+                          <Percent className="h-4 w-4" />
+                          Insights da Análise
+                        </h4>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>• Variações no <strong>preço de venda</strong> têm impacto direto na rentabilidade</p>
+                          <p>• O <strong>custo da ração</strong> é um fator crítico para a viabilidade do negócio</p>
+                          <p>• Cenários com preços altos (+10%) e custos baixos (-10%) maximizam o retorno</p>
+                          <p>• Monitoramento contínuo desses indicadores é essencial para gestão de risco</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       ) : (
         <Card>

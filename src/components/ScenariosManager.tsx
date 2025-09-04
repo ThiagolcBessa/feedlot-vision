@@ -77,9 +77,22 @@ export function ScenariosManager({
 
   const handleAddScenario = () => {
     if (newScenarioName.trim()) {
+      // Create new scenario based on current active scenario
+      const activeScenario = scenarios.find(s => s.id === activeScenarioId);
+      const newScenario: Scenario = {
+        id: `scenario-${Date.now()}`,
+        name: newScenarioName.trim(),
+        isActive: false,
+        formData: activeScenario ? { ...activeScenario.formData } : { title: '' },
+        businessData: activeScenario ? { ...activeScenario.businessData } : {}
+      };
+      
       onAddScenario();
-      // Note: The actual renaming would happen in the parent component
-      // For now, we just close the dialog
+      // After creation, rename the new scenario
+      setTimeout(() => {
+        onRenameScenario(newScenario.id, newScenarioName.trim());
+      }, 100);
+      
       setShowAddDialog(false);
       setNewScenarioName('');
     }
