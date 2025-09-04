@@ -27,6 +27,7 @@ import {
   type UnitMatrixRow 
 } from '@/services/unitMatrix';
 import { UnitPremisesModal } from '@/components/UnitPremisesModal';
+import { HistoricalHint } from '@/components/HistoricalHint';
 
 export default function Simulation() {
   const { user } = useAuth();
@@ -46,15 +47,38 @@ export default function Simulation() {
   const [matrixSuggestions, setMatrixSuggestions] = useState<MatrixSuggestions | null>(null);
   const [showPremisesModal, setShowPremisesModal] = useState(false);
   
-  // Business Data (Dados do Negócio)
+  // Business Data (Dados do Negócio) - Complete blue fields
   const [businessData, setBusinessData] = useState({
+    // Identification
     pecuarista: '',
+    originator_id: user?.id || '',
+    negotiation_date: new Date(),
     unit_code: '',
     dieta: '',
-    tipo_animal: '',
+    scale_type: 'Fazenda' as 'Fazenda' | 'Balanção' | 'Balancinha',
+    breakage_farm_pct: 2.0,
+    breakage_scale_pct: 1.0,
     modalidade: '' as 'Diária' | 'Arroba Prod.' | '',
+    
+    // Lot & Weights
     qtd_animais: 100,
+    tipo_animal: '',
+    peso_fazenda_kg: 0,
+    peso_entrada_balancao_kg: 0,
+    peso_ajustado_balancinha_kg: 0,
+    
+    // Market
+    lean_cattle_yield_at: 0.50,
+    price_lean_r_per_at: 300,
+    price_fat_r_per_at: 350,
+    agio_r: 0,
   });
+
+  // Profile data for originator selection
+  const [profiles, setProfiles] = useState<Array<{ id: string; first_name?: string; last_name?: string }>>([]);
+  
+  // Historical medians for hints
+  const [historicalHints, setHistoricalHints] = useState<{[key: string]: { unit_median?: number; originator_median?: number }}>({});
 
   const [formData, setFormData] = useState<Partial<SimulationInput> & { title: string; notes?: string }>({
     title: '',
@@ -91,6 +115,7 @@ export default function Simulation() {
     }
     loadPremises();
     loadUnits();
+    loadProfiles();
   }, [searchParams]);
 
   // Load matrix suggestions when business data changes
@@ -101,6 +126,7 @@ export default function Simulation() {
         businessData.tipo_animal && 
         formData.entry_weight_kg) {
       loadMatrixSuggestions();
+      loadHistoricalHints();
     }
   }, [businessData.unit_code, businessData.modalidade, businessData.dieta, businessData.tipo_animal, formData.entry_weight_kg]);
 
@@ -129,6 +155,62 @@ export default function Simulation() {
       setUnits(unitsData);
     } catch (error) {
       console.error('Error loading units:', error);
+    }
+  };
+
+  const loadProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .order('first_name');
+
+      if (error) throw error;
+      setProfiles(data || []);
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+    }
+  };
+
+  const loadHistoricalHints = async () => {
+    if (!businessData.unit_code || !businessData.tipo_animal || !businessData.modalidade) return;
+    
+    try {
+      // Mock historical data since negotiations table not in typed schema
+      // In production, this would query the negotiations table
+      console.log('Loading historical hints for:', {
+        unit: businessData.unit_code,
+        type: businessData.tipo_animal,
+        modalidade: businessData.modalidade
+      });
+      
+      // Generate mock medians based on typical values
+      const mockHints: {[key: string]: { unit_median?: number; originator_median?: number }} = {
+        days_on_feed: {
+          unit_median: 105,
+          originator_median: 110
+        },
+        adg_kg_day: {
+          unit_median: 1.6,
+          originator_median: 1.5
+        },
+        feed_cost_kg_dm: {
+          unit_median: 0.45,
+          originator_median: 0.47
+        },
+        price_lean: {
+          unit_median: 300,
+          originator_median: 295
+        },
+        price_fat: {
+          unit_median: 350,
+          originator_median: 348
+        }
+      };
+      
+      setHistoricalHints(mockHints);
+    } catch (error) {
+      console.error('Error loading historical hints:', error);
     }
   };
 
@@ -456,123 +538,387 @@ export default function Simulation() {
         </div>
 
         <TabsContent value="animal" className="space-y-6">
-          {/* NEW: Dados do Negócio Section */}
+          {/* Dados do Negócio Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Dados do Negócio</CardTitle>
+              <CardTitle className="text-blue-600">Dados do Negócio</CardTitle>
               <CardDescription>
-                Informações de identificação e parâmetros do negócio
+                Campos azuis - Informações de identificação e parâmetros do negócio
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pecuarista">Pecuarista *</Label>
-                  <Input
-                    id="pecuarista"
-                    value={businessData.pecuarista}
-                    onChange={(e) => handleBusinessDataChange('pecuarista', e.target.value.toUpperCase())}
-                    placeholder="NOME COMPLETO MAIÚSCULO"
-                    className="uppercase"
-                  />
+              {/* Identification */}
+              <div>
+                <h4 className="font-medium mb-3 text-blue-600">Identificação</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pecuarista">Pecuarista *</Label>
+                    <Input
+                      id="pecuarista"
+                      value={businessData.pecuarista}
+                      onChange={(e) => handleBusinessDataChange('pecuarista', e.target.value.toUpperCase())}
+                      placeholder="NOME COMPLETO MAIÚSCULO"
+                      className="uppercase bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="originator">Originador</Label>
+                    <Select value={businessData.originator_id} onValueChange={(value) => handleBusinessDataChange('originator_id', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Selecione originador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles.map((profile) => (
+                          <SelectItem key={profile.id} value={profile.id}>
+                            {profile.first_name} {profile.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="negotiation_date">Data Negociação</Label>
+                    <Input
+                      id="negotiation_date"
+                      type="date"
+                      value={businessData.negotiation_date.toISOString().split('T')[0]}
+                      onChange={(e) => handleBusinessDataChange('negotiation_date', new Date(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unit_code">Unidade</Label>
+                    <Select value={businessData.unit_code} onValueChange={(value) => handleBusinessDataChange('unit_code', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Selecione uma unidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit.code} value={unit.code}>
+                            {unit.code} - {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unit_code">Unidade</Label>
-                  <Select value={businessData.unit_code} onValueChange={(value) => handleBusinessDataChange('unit_code', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma unidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((unit) => (
-                        <SelectItem key={unit.code} value={unit.code}>
-                          {unit.code} - {unit.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+
+              {/* Service Parameters */}
+              <div>
+                <h4 className="font-medium mb-3 text-blue-600">Parâmetros de Serviço</h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dieta">Dieta</Label>
+                    <Select value={businessData.dieta} onValueChange={(value) => handleBusinessDataChange('dieta', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Selecione dieta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dietas.map((dieta) => (
+                          <SelectItem key={dieta} value={dieta}>
+                            {dieta}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="scale_type">Balança</Label>
+                    <Select value={businessData.scale_type} onValueChange={(value) => handleBusinessDataChange('scale_type', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Tipo de balança" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Fazenda">Fazenda</SelectItem>
+                        <SelectItem value="Balanção">Balanção</SelectItem>
+                        <SelectItem value="Balancinha">Balancinha</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="breakage_farm">Quebra Fazenda (%)</Label>
+                    <Input
+                      id="breakage_farm"
+                      type="number"
+                      step="0.1"
+                      value={businessData.breakage_farm_pct}
+                      onChange={(e) => handleBusinessDataChange('breakage_farm_pct', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="breakage_scale">Quebra Balança (%)</Label>
+                    <Input
+                      id="breakage_scale"
+                      type="number"
+                      step="0.1"
+                      value={businessData.breakage_scale_pct}
+                      onChange={(e) => handleBusinessDataChange('breakage_scale_pct', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="modalidade">Modalidade</Label>
+                    <Select value={businessData.modalidade} onValueChange={(value) => handleBusinessDataChange('modalidade', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Selecione modalidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modalidades.map((modalidade) => (
+                          <SelectItem key={modalidade} value={modalidade}>
+                            {modalidade}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="modalidade">Modalidade</Label>
-                  <Select value={businessData.modalidade} onValueChange={(value) => handleBusinessDataChange('modalidade', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione modalidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modalidades.map((modalidade) => (
-                        <SelectItem key={modalidade} value={modalidade}>
-                          {modalidade}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+
+              {/* Lot & Weights */}
+              <div>
+                <h4 className="font-medium mb-3 text-blue-600">Lote e Pesos</h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="qtd_animais">Qtd. Animais</Label>
+                    <Input
+                      id="qtd_animais"
+                      type="number"
+                      value={businessData.qtd_animais}
+                      onChange={(e) => handleBusinessDataChange('qtd_animais', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo_animal">Tipo Animal</Label>
+                    <Select value={businessData.tipo_animal} onValueChange={(value) => handleBusinessDataChange('tipo_animal', value)}>
+                      <SelectTrigger className="bg-blue-50 border-blue-200">
+                        <SelectValue placeholder="Selecione tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {animalTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="peso_fazenda">Peso Fazenda (kg)</Label>
+                    <Input
+                      id="peso_fazenda"
+                      type="number"
+                      step="0.1"
+                      value={businessData.peso_fazenda_kg}
+                      onChange={(e) => handleBusinessDataChange('peso_fazenda_kg', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="peso_balancao">Peso Balanção (kg)</Label>
+                    <Input
+                      id="peso_balancao"
+                      type="number"
+                      step="0.1"
+                      value={businessData.peso_entrada_balancao_kg}
+                      onChange={(e) => handleBusinessDataChange('peso_entrada_balancao_kg', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="peso_balancinha">Peso Balancinha (kg)</Label>
+                    <Input
+                      id="peso_balancinha"
+                      type="number"
+                      step="0.1"
+                      value={businessData.peso_ajustado_balancinha_kg}
+                      onChange={(e) => handleBusinessDataChange('peso_ajustado_balancinha_kg', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dieta">Dieta</Label>
-                  <Select value={businessData.dieta} onValueChange={(value) => handleBusinessDataChange('dieta', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione dieta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {dietas.map((dieta) => (
-                        <SelectItem key={dieta} value={dieta}>
-                          {dieta}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+
+              {/* Zootechnical with Historical Hints */}
+              <div>
+                <h4 className="font-medium mb-3 text-blue-600">Zootécnico</h4>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="days_feed">Dias no Cocho</Label>
+                    <Input
+                      id="days_feed"
+                      type="number"
+                      value={formData.days_on_feed || ''}
+                      onChange={(e) => handleInputChange('days_on_feed', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                    <HistoricalHint 
+                      fieldName="days_on_feed" 
+                      hints={historicalHints.days_on_feed || {}}
+                      formatter={(v) => `${v} dias`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adg">ADG (kg/dia)</Label>
+                    <Input
+                      id="adg"
+                      type="number"
+                      step="0.01"
+                      value={formData.adg_kg_day || ''}
+                      onChange={(e) => handleInputChange('adg_kg_day', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                    <HistoricalHint 
+                      fieldName="adg_kg_day" 
+                      hints={historicalHints.adg_kg_day || {}}
+                      formatter={(v) => `${v} kg/dia`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rc_pct">RC (%)</Label>
+                    <Input
+                      id="rc_pct"
+                      type="number"
+                      step="0.1"
+                      value={premises?.carcass_yield_pct ? (premises.carcass_yield_pct * 100).toFixed(1) : '53.0'}
+                      onChange={(e) => {
+                        // This would require updating premises - for now just show the value
+                        console.log('RC update requested:', e.target.value);
+                      }}
+                      className="bg-blue-50 border-blue-200"
+                      readOnly
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Configurado nas premissas da unidade
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dmi">DMI (kg/dia)</Label>
+                    <Input
+                      id="dmi"
+                      type="number"
+                      step="0.1"
+                      value={formData.dmi_kg_day || ''}
+                      onChange={(e) => handleInputChange('dmi_kg_day', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="feed_cost">Custo Ração (R$/kg MS)</Label>
+                    <Input
+                      id="feed_cost"
+                      type="number"
+                      step="0.01"
+                      value={formData.feed_cost_kg_dm || ''}
+                      onChange={(e) => handleInputChange('feed_cost_kg_dm', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                    <HistoricalHint 
+                      fieldName="feed_cost_kg_dm" 
+                      hints={historicalHints.feed_cost_kg_dm || {}}
+                      formatter={(v) => formatCurrency(v) + '/kg'}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipo_animal">Tipo Animal</Label>
-                  <Select value={businessData.tipo_animal} onValueChange={(value) => handleBusinessDataChange('tipo_animal', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {animalTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="qtd_animais">Qtd. Animais</Label>
-                  <Input
-                    id="qtd_animais"
-                    type="number"
-                    value={businessData.qtd_animais}
-                    onChange={(e) => handleBusinessDataChange('qtd_animais', Number(e.target.value))}
-                    placeholder="1000"
-                  />
+              </div>
+
+              {/* Market */}
+              <div>
+                <h4 className="font-medium mb-3 text-blue-600">Mercado</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lean_yield">Rendimento Boi Magro (@ Prod.)</Label>
+                    <Input
+                      id="lean_yield"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={businessData.lean_cattle_yield_at}
+                      onChange={(e) => handleBusinessDataChange('lean_cattle_yield_at', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price_lean">Preço @ Boi Magro</Label>
+                    <Input
+                      id="price_lean"
+                      type="number"
+                      step="0.01"
+                      value={businessData.price_lean_r_per_at}
+                      onChange={(e) => handleBusinessDataChange('price_lean_r_per_at', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                    <HistoricalHint 
+                      fieldName="price_lean" 
+                      hints={historicalHints.price_lean || {}}
+                      formatter={formatCurrency}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="price_fat">Preço @ Boi Gordo</Label>
+                    <Input
+                      id="price_fat"
+                      type="number"
+                      step="0.01"
+                      value={businessData.price_fat_r_per_at}
+                      onChange={(e) => handleBusinessDataChange('price_fat_r_per_at', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                    <HistoricalHint 
+                      fieldName="price_fat" 
+                      hints={historicalHints.price_fat || {}}
+                      formatter={formatCurrency}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="agio">Ágio (R$)</Label>
+                    <Input
+                      id="agio"
+                      type="number"
+                      step="0.01"
+                      value={businessData.agio_r}
+                      onChange={(e) => handleBusinessDataChange('agio_r', Number(e.target.value))}
+                      className="bg-blue-50 border-blue-200"
+                    />
+                  </div>
                 </div>
               </div>
               
               {/* Service Price Display */}
               {matrixSuggestions && (
-                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 p-4 rounded-lg border border-blue-200">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Preço de Serviço & Etiqueta</h4>
+                    <h4 className="font-medium text-blue-700 dark:text-blue-300">Preço de Serviço & Etiqueta do Produto</h4>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setShowPremisesModal(true)}
-                      className="ml-auto"
+                      className="ml-auto border-blue-200 text-blue-600 hover:bg-blue-50"
                     >
                       <Settings className="w-3 h-3 mr-1" />
-                      Ver Premissas
+                      Ver Premissas da Unidade
                     </Button>
                   </div>
                   <div className="flex items-center gap-4 flex-wrap">
                     <div>
-                      <span className="text-sm text-muted-foreground">Preço:</span>
-                      <span className="font-bold ml-2">
+                      <span className="text-sm text-blue-600 dark:text-blue-400">Preço Base:</span>
+                      <span className="font-bold ml-2 text-blue-700 dark:text-blue-300">
+                        {formatCurrency(matrixSuggestions.service_price_base || 0)}
+                        {businessData.modalidade === 'Diária' ? '/cab/dia' : '/@'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-sm text-blue-600 dark:text-blue-400">Preço Final:</span>
+                      <span className="font-bold ml-2 text-lg text-blue-800 dark:text-blue-200">
                         {formatCurrency(matrixSuggestions.service_price || 0)}
                         {businessData.modalidade === 'Diária' ? '/cab/dia' : '/@'}
                       </span>
                     </div>
                     {matrixSuggestions.concat_label && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
+                      <Badge variant="secondary" className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-300">
                         <Tag className="w-3 h-3" />
                         {matrixSuggestions.concat_label}
                       </Badge>
