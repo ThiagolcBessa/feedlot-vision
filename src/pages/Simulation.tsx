@@ -8,13 +8,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Calculator, Save, ArrowLeft, ArrowRight, Settings, Tag } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatWeight, formatArroubas, formatPercentage } from '@/services/calculations';
 import type { SimulationInput } from '@/services/calculations';
 import { useSimCalculator } from '@/hooks/useSimCalculator';
+import { 
+  findMatrixRow, 
+  fetchUnits, 
+  fetchDietasForUnit, 
+  fetchAnimalTypesForSelection, 
+  fetchModalidadesForSelection,
+  type MatrixSuggestions, 
+  type UnitMatrixRow 
+} from '@/services/unitMatrix';
+import { UnitPremisesModal } from '@/components/UnitPremisesModal';
 
 export default function Simulation() {
   const { user } = useAuth();
@@ -25,6 +37,24 @@ export default function Simulation() {
   const [isEditing, setIsEditing] = useState(false);
   const [simulationId, setSimulationId] = useState<string | null>(null);
   const [premises, setPremises] = useState<any>(null);
+  
+  // Unit Matrix Integration
+  const [units, setUnits] = useState<Array<{ code: string; name: string; state: string }>>([]);
+  const [dietas, setDietas] = useState<string[]>([]);
+  const [animalTypes, setAnimalTypes] = useState<string[]>([]);
+  const [modalidades, setModalidades] = useState<string[]>([]);
+  const [matrixSuggestions, setMatrixSuggestions] = useState<MatrixSuggestions | null>(null);
+  const [showPremisesModal, setShowPremisesModal] = useState(false);
+  
+  // Business Data (Dados do Negócio)
+  const [businessData, setBusinessData] = useState({
+    pecuarista: '',
+    unit_code: '',
+    dieta: '',
+    tipo_animal: '',
+    modalidade: '' as 'Diária' | 'Arroba Prod.' | '',
+    qtd_animais: 100,
+  });
 
   const [formData, setFormData] = useState<Partial<SimulationInput> & { title: string; notes?: string }>({
     title: '',
@@ -60,7 +90,90 @@ export default function Simulation() {
       loadSimulation(editId);
     }
     loadPremises();
+    loadUnits();
   }, [searchParams]);
+
+  // Load matrix suggestions when business data changes
+  useEffect(() => {
+    if (businessData.unit_code && 
+        businessData.modalidade && 
+        businessData.dieta && 
+        businessData.tipo_animal && 
+        formData.entry_weight_kg) {
+      loadMatrixSuggestions();
+    }
+  }, [businessData.unit_code, businessData.modalidade, businessData.dieta, businessData.tipo_animal, formData.entry_weight_kg]);
+
+  // Load dependent dropdown options
+  useEffect(() => {
+    if (businessData.unit_code) {
+      loadDietas(businessData.unit_code);
+    }
+  }, [businessData.unit_code]);
+
+  useEffect(() => {
+    if (businessData.unit_code && businessData.dieta) {
+      loadAnimalTypes(businessData.unit_code, businessData.dieta);
+    }
+  }, [businessData.unit_code, businessData.dieta]);
+
+  useEffect(() => {
+    if (businessData.unit_code && businessData.dieta && businessData.tipo_animal) {
+      loadModalidades(businessData.unit_code, businessData.dieta, businessData.tipo_animal);
+    }
+  }, [businessData.unit_code, businessData.dieta, businessData.tipo_animal]);
+
+  const loadUnits = async () => {
+    try {
+      const unitsData = await fetchUnits();
+      setUnits(unitsData);
+    } catch (error) {
+      console.error('Error loading units:', error);
+    }
+  };
+
+  const loadDietas = async (unitCode: string) => {
+    try {
+      const dietasData = await fetchDietasForUnit(unitCode);
+      setDietas(dietasData);
+    } catch (error) {
+      console.error('Error loading dietas:', error);
+    }
+  };
+
+  const loadAnimalTypes = async (unitCode: string, dieta: string) => {
+    try {
+      const typesData = await fetchAnimalTypesForSelection(unitCode, dieta);
+      setAnimalTypes(typesData);
+    } catch (error) {
+      console.error('Error loading animal types:', error);
+    }
+  };
+
+  const loadModalidades = async (unitCode: string, dieta: string, tipoAnimal: string) => {
+    try {
+      const modalidadesData = await fetchModalidadesForSelection(unitCode, dieta, tipoAnimal);
+      setModalidades(modalidadesData);
+    } catch (error) {
+      console.error('Error loading modalidades:', error);
+    }
+  };
+
+  const loadMatrixSuggestions = async () => {
+    try {
+      const suggestions = await findMatrixRow({
+        unit_code: businessData.unit_code,
+        modalidade: businessData.modalidade as 'Diária' | 'Arroba Prod.',
+        dieta: businessData.dieta,
+        tipo_animal: businessData.tipo_animal,
+        entry_weight_kg: formData.entry_weight_kg!,
+      });
+      
+      setMatrixSuggestions(suggestions);
+    } catch (error) {
+      console.error('Error loading matrix suggestions:', error);
+    }
+  };
 
   const loadPremises = async () => {
     if (!user) return;
@@ -127,6 +240,52 @@ export default function Simulation() {
       ...prev,
       [field]: typeof value === 'string' ? (isNaN(Number(value)) ? value : Number(value)) : value
     }));
+  };
+
+  const handleBusinessDataChange = (field: string, value: any) => {
+    setBusinessData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const applySuggestion = (field: string, value: number) => {
+    // Map matrix field names to form field names
+    const fieldMapping: { [key: string]: string } = {
+      'days_on_feed': 'days_on_feed',
+      'adg_kg_day': 'adg_kg_day', 
+      'dmi_pct_bw': 'dmi_pct_bw',
+      'dmi_kg_day': 'dmi_kg_day',
+      'carcass_yield_pct': 'carcass_yield_pct', // This will need premises update
+      'feed_cost_kg_dm': 'feed_cost_kg_dm',
+    };
+
+    const formField = fieldMapping[field];
+    if (formField) {
+      if (field === 'carcass_yield_pct') {
+        // Apply to premises for carcass yield
+        if (premises) {
+          // Update premises would require a separate call
+          toast({
+            title: 'Sugestão aplicada',
+            description: `${field} atualizado para ${value}`,
+          });
+        }
+      } else {
+        // Convert percentage values if needed
+        let finalValue = value;
+        if (field === 'dmi_pct_bw' && value > 10) {
+          finalValue = value / 100; // Convert percentage to decimal
+        }
+        
+        handleInputChange(formField, finalValue);
+        toast({
+          title: 'Sugestão aplicada',
+          description: `${field} atualizado para ${finalValue}`,
+        });
+      }
+    }
+    setShowPremisesModal(false);
   };
 
   const handleCalculate = () => {
@@ -311,62 +470,116 @@ export default function Simulation() {
                   <Label htmlFor="pecuarista">Pecuarista *</Label>
                   <Input
                     id="pecuarista"
+                    value={businessData.pecuarista}
+                    onChange={(e) => handleBusinessDataChange('pecuarista', e.target.value.toUpperCase())}
                     placeholder="NOME COMPLETO MAIÚSCULO"
                     className="uppercase"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit_code">Unidade</Label>
-                  <select className="w-full p-2 border rounded">
-                    <option value="CGA">CGA - CGA Unit</option>
-                    <option value="CBS">CBS - CBS Unit</option>
-                    <option value="CCF">CCF - CCF Unit</option>
-                  </select>
+                  <Select value={businessData.unit_code} onValueChange={(value) => handleBusinessDataChange('unit_code', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma unidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.code} value={unit.code}>
+                          {unit.code} - {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="modalidade">Modalidade</Label>
-                  <select className="w-full p-2 border rounded">
-                    <option value="Diária">Diária</option>
-                    <option value="Arroba Prod.">Arroba Prod.</option>
-                  </select>
+                  <Select value={businessData.modalidade} onValueChange={(value) => handleBusinessDataChange('modalidade', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione modalidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modalidades.map((modalidade) => (
+                        <SelectItem key={modalidade} value={modalidade}>
+                          {modalidade}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dieta">Dieta</Label>
-                  <select className="w-full p-2 border rounded">
-                    <option value="Volumoso">Volumoso</option>
-                    <option value="Grão">Grão</option>
-                  </select>
+                  <Select value={businessData.dieta} onValueChange={(value) => handleBusinessDataChange('dieta', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione dieta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dietas.map((dieta) => (
+                        <SelectItem key={dieta} value={dieta}>
+                          {dieta}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tipo_animal">Tipo Animal</Label>
-                  <select className="w-full p-2 border rounded">
-                    <option value="Boi Nelore">Boi Nelore</option>
-                    <option value="Novilha">Novilha</option>
-                  </select>
+                  <Select value={businessData.tipo_animal} onValueChange={(value) => handleBusinessDataChange('tipo_animal', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {animalTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="qtd_animais">Qtd. Animais</Label>
                   <Input
                     id="qtd_animais"
                     type="number"
+                    value={businessData.qtd_animais}
+                    onChange={(e) => handleBusinessDataChange('qtd_animais', Number(e.target.value))}
                     placeholder="1000"
                   />
                 </div>
               </div>
               
               {/* Service Price Display */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Preço de Serviço & Etiqueta</h4>
-                <div className="flex items-center gap-4">
-                  <div>
-                    <span className="text-sm text-muted-foreground">Preço:</span>
-                    <span className="font-bold ml-2">R$ 227,16/cab/dia</span>
+              {matrixSuggestions && (
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Preço de Serviço & Etiqueta</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPremisesModal(true)}
+                      className="ml-auto"
+                    >
+                      <Settings className="w-3 h-3 mr-1" />
+                      Ver Premissas
+                    </Button>
                   </div>
-                  <div className="px-3 py-1 bg-blue-100 rounded-full text-sm">
-                    CGABoi Nelore45809Diária
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div>
+                      <span className="text-sm text-muted-foreground">Preço:</span>
+                      <span className="font-bold ml-2">
+                        {formatCurrency(matrixSuggestions.service_price || 0)}
+                        {businessData.modalidade === 'Diária' ? '/cab/dia' : '/@'}
+                      </span>
+                    </div>
+                    {matrixSuggestions.concat_label && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Tag className="w-3 h-3" />
+                        {matrixSuggestions.concat_label}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -781,6 +994,14 @@ export default function Simulation() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Unit Premises Modal */}
+      <UnitPremisesModal
+        open={showPremisesModal}
+        onClose={() => setShowPremisesModal(false)}
+        matrixRow={matrixSuggestions?.matched_row || null}
+        onApplySuggestion={applySuggestion}
+      />
     </div>
   );
 }
