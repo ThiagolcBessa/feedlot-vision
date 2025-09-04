@@ -48,6 +48,7 @@ export interface SimulationResult {
   exit_weight_kg: number;
   carcass_weight_kg: number;
   arroubas_hook: number;
+  arroubas_magro: number; // Added for DrePecuarista
   arroubas_gain: number;
   dmi_kg_day_calculated: number;
 
@@ -99,6 +100,24 @@ export interface SimulationResult {
   break_even_r_per_at: number;
   roi_pct: number;
   payback_days: number | null;
+  
+  // Additional DRE fields (flattened for easier access)
+  result_per_at_bm: number;
+  monthly_return_pct: number;
+  cost_per_at_produced: number;
+  
+  // JBS DRE fields (flattened)
+  freight_confinement: number;
+  sanitary_mortality: number;
+  ctr_cost: number;
+  cf_cost: number;
+  corp_cost: number;
+  depreciation_cost: number;
+  financial_cost: number;
+  other_fixed: number;
+  result_jbs_per_head: number;
+  result_jbs_total: number;
+  result_per_arroba: number;
 }
 
 const ARROUBA_WEIGHT_KG = 15;
@@ -280,6 +299,7 @@ export function calculateSimulation(input: SimulationInput): SimulationResult {
     exit_weight_kg: Number(exit_weight_kg.toFixed(2)),
     carcass_weight_kg: Number(carcass_weight_kg.toFixed(2)),
     arroubas_hook: Number(arroubas_hook.toFixed(2)),
+    arroubas_magro: Number(arroubas_magro.toFixed(2)),
     arroubas_gain: Number(arroubas_gain.toFixed(2)),
     dmi_kg_day_calculated: Number(dmi_kg_day_calculated.toFixed(2)),
 
@@ -331,6 +351,24 @@ export function calculateSimulation(input: SimulationInput): SimulationResult {
     break_even_r_per_at: Number(break_even_r_per_at.toFixed(2)),
     roi_pct: Number(roi_pct.toFixed(2)),
     payback_days: payback_days ? Number(payback_days.toFixed(1)) : null,
+    
+    // Additional DRE fields (flattened for easier access)
+    result_per_at_bm: dre_pecuarista ? Number(dre_pecuarista.result_per_arroba_magro.toFixed(2)) : 0,
+    monthly_return_pct: dre_pecuarista ? Number(dre_pecuarista.monthly_return_pct.toFixed(2)) : 0,
+    cost_per_at_produced: dre_pecuarista ? Number(dre_pecuarista.cost_per_arroba_produced.toFixed(2)) : 0,
+    
+    // JBS DRE fields (flattened)
+    freight_confinement: dre_jbs ? Number(dre_jbs.freight_costs.toFixed(2)) : 0,
+    sanitary_mortality: dre_jbs ? Number(dre_jbs.sanitary_mortality.toFixed(2)) : 0,
+    ctr_cost: dre_jbs ? Number(dre_jbs.ctr_costs.toFixed(2)) : 0,
+    cf_cost: dre_jbs ? Number(dre_jbs.cf_costs.toFixed(2)) : 0,
+    corp_cost: dre_jbs ? Number(dre_jbs.corp_costs.toFixed(2)) : 0,
+    depreciation_cost: dre_jbs ? Number(dre_jbs.depreciation.toFixed(2)) : 0,
+    financial_cost: dre_jbs ? Number(dre_jbs.financial.toFixed(2)) : 0,
+    other_fixed: dre_jbs ? Number(dre_jbs.other_fixed.toFixed(2)) : 0,
+    result_jbs_per_head: dre_jbs ? Number(dre_jbs.result_jbs.toFixed(2)) : 0,
+    result_jbs_total: dre_jbs ? Number((dre_jbs.result_jbs * (input.negotiation?.qtd_animais || 1)).toFixed(2)) : 0,
+    result_per_arroba: dre_jbs ? Number(dre_jbs.result_per_arroba.toFixed(2)) : 0,
   };
 }
 
