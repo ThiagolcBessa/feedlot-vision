@@ -359,7 +359,7 @@ export default function Simulation() {
         modalidade: businessData.modalidade,
         dieta: businessData.dieta,
         tipo_animal: businessData.tipo_animal,
-        peso_entrada_kg: formData.entry_weight_kg || 0
+        entry_weight_kg: formData.entry_weight_kg || 0
       });
       
       setMatrixSuggestions(suggestions);
@@ -370,58 +370,35 @@ export default function Simulation() {
 
   const loadSimulation = async (id: string) => {
     try {
-      const { data, error } = await supabase
+      // Load simulation data
+      const { data: simData, error: simError } = await supabase
         .from('simulations')
-        .select('*, negotiations(*)')
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (simError) throw simError;
 
-      if (data) {
+      if (simData) {
         setFormData({
-          title: data.title,
-          entry_weight_kg: data.entry_weight_kg,
-          days_on_feed: data.days_on_feed,
-          adg_kg_day: data.adg_kg_day,
-          dmi_pct_bw: data.dmi_pct_bw,
-          selling_price_per_at: data.selling_price_per_at,
-          feed_cost_kg_dm: data.feed_cost_kg_dm,
-          mortality_pct: data.mortality_pct,
-          feed_waste_pct: data.feed_waste_pct,
-          health_cost_total: data.health_cost_total,
-          transport_cost_total: data.transport_cost_total,
-          financial_cost_total: data.financial_cost_total,
-          depreciation_total: data.depreciation_total,
-          overhead_total: data.overhead_total,
-          purchase_price_per_at: data.purchase_price_per_at,
-          purchase_price_per_kg: data.purchase_price_per_kg,
-          notes: data.notes,
+          title: simData.title,
+          entry_weight_kg: simData.entry_weight_kg,
+          days_on_feed: simData.days_on_feed,
+          adg_kg_day: simData.adg_kg_day,
+          dmi_pct_bw: simData.dmi_pct_bw,
+          selling_price_per_at: simData.selling_price_per_at,
+          feed_cost_kg_dm: simData.feed_cost_kg_dm,
+          mortality_pct: simData.mortality_pct,
+          feed_waste_pct: simData.feed_waste_pct,
+          health_cost_total: simData.health_cost_total,
+          transport_cost_total: simData.transport_cost_total,
+          financial_cost_total: simData.financial_cost_total,
+          depreciation_total: simData.depreciation_total,
+          overhead_total: simData.overhead_total,
+          purchase_price_per_at: simData.purchase_price_per_at,
+          purchase_price_per_kg: simData.purchase_price_per_kg,
+          notes: simData.notes,
         });
-
-        if (data.negotiations) {
-          const nego = data.negotiations;
-          setBusinessData({
-            pecuarista: nego.pecuarista_name || '',
-            originator_id: nego.originator_id || user?.id || '',
-            negotiation_date: nego.date_ref ? new Date(nego.date_ref) : new Date(),
-            unit_code: nego.unit_code || '',
-            dieta: nego.dieta || '',
-            scale_type: nego.scale_type || 'Fazenda',
-            breakage_farm_pct: nego.quebra_fazenda_pct || 2.0,
-            breakage_scale_pct: nego.quebra_balanca_pct || 1.0,
-            modalidade: nego.modalidade || '',
-            qtd_animais: nego.qtd_animais || 100,
-            tipo_animal: nego.tipo_animal || '',
-            peso_fazenda_kg: nego.peso_fazenda_kg || 0,
-            peso_entrada_balancao_kg: nego.peso_entrada_balancao_kg || 0,
-            peso_ajustado_balancinha_kg: nego.peso_entrada_balancinha_kg || 0,
-            lean_cattle_yield_at: nego.rendimento_boi_magro_prod_pct || 0.50,
-            price_lean_r_per_at: nego.preco_boi_magro_r_por_arroba || 300,
-            price_fat_r_per_at: nego.preco_boi_gordo_r_por_arroba || 350,
-            agio_r: nego.agio_magro_r || 0,
-          });
-        }
       }
     } catch (error) {
       console.error('Error loading simulation:', error);
@@ -453,13 +430,29 @@ export default function Simulation() {
         throw new Error('Nenhum cenário ativo encontrado');
       }
 
-      await orchestrator.saveSimulation({
-        businessData: activeScenario.businessData,
-        formData: activeScenario.formData,
-        result: result!,
+      const completeFormData = {
+        ...activeScenario.formData,
+        entry_weight_kg: activeScenario.formData.entry_weight_kg || 0,
+        days_on_feed: activeScenario.formData.days_on_feed || 0,
+        adg_kg_day: activeScenario.formData.adg_kg_day || 0,
+        mortality_pct: activeScenario.formData.mortality_pct || 2.0,
+        feed_waste_pct: activeScenario.formData.feed_waste_pct || 5.0,
+        selling_price_per_at: activeScenario.formData.selling_price_per_at || 0,
+        feed_cost_kg_dm: activeScenario.formData.feed_cost_kg_dm || 0,
+        health_cost_total: activeScenario.formData.health_cost_total || 0,
+        transport_cost_total: activeScenario.formData.transport_cost_total || 0,
+        financial_cost_total: activeScenario.formData.financial_cost_total || 0,
+        depreciation_total: activeScenario.formData.depreciation_total || 0,
+        overhead_total: activeScenario.formData.overhead_total || 0,
+      };
+
+      await orchestrator.saveSimulation(
+        activeScenario.businessData,
+        completeFormData,
+        premises,
         isEditing,
-        simulationId
-      });
+        simulationId || undefined
+      );
 
       toast({
         title: "Simulação salva com sucesso!",
@@ -1387,11 +1380,15 @@ export default function Simulation() {
         </div>
       </div>
 
-      {showPremisesModal && premises && (
+      {matrixSuggestions?.matched_row && (
         <UnitPremisesModal
-          premises={premises}
+          matrixRow={matrixSuggestions.matched_row}
           open={showPremisesModal}
           onClose={() => setShowPremisesModal(false)}
+          onApplySuggestion={(field, value) => {
+            handleInputChange(field, value);
+            setShowPremisesModal(false);
+          }}
         />
       )}
     </div>
