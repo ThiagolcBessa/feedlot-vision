@@ -87,7 +87,7 @@ export default function Simulation() {
         name: 'Cenário Base',
         isActive: true,
         formData: defaultFormData,
-        businessData: {} // Keep for compatibility, but not used
+        businessData: {}
       };
       
       setScenarios([defaultScenario]);
@@ -95,7 +95,33 @@ export default function Simulation() {
   }, [user?.id]);
 
   const activeScenario = scenarios.find(s => s.id === activeScenarioId);
-  const formData = activeScenario?.formData || {};
+  const formData = activeScenario?.formData || {
+    title: 'Nova Simulação',
+    pecuarista_name: '',
+    originator_id: user?.id || '',
+    date_ref: new Date(),
+    unit_code: '',
+    dieta: '',
+    scale_type: 'Balanção' as const,
+    modalidade: 'Diária' as const,
+    quebra_fazenda_pct: 0.02,
+    quebra_balanca_pct: 0.01,
+    qtd_animais: 100,
+    tipo_animal: '',
+    peso_fazenda_kg: 0,
+    peso_entrada_balancao_kg: 0,
+    peso_entrada_balancinha_kg: 0,
+    dias_cocho: 120,
+    gmd_kg_dia: 1.4,
+    rc_pct: 0.53,
+    dmi_kg_dia: 0,
+    custo_ms_kg: 0.45,
+    rendimento_boi_magro_prod_pct: 0.50,
+    preco_boi_magro_r_por_arroba: 165.0,
+    preco_boi_gordo_r_por_arroba: 185.0,
+    agio_magro_r: 2.5,
+    notes: '',
+  };
 
   // Create complete form data for calculator  
   const completeFormData = {
@@ -345,12 +371,12 @@ export default function Simulation() {
       const orchestrator = new SaveOrchestrator();
       const activeScenario = scenarios.find(s => s.id === activeScenarioId);
       
-      if (!activeScenario?.formData) {
+      if (!formData) {
         throw new Error('Nenhum cenário ativo encontrado');
       }
 
       const result = await orchestrator.saveSimulation(
-        activeScenario.formData,
+        formData,
         premises,
         isEditing,
         simulationId || undefined
@@ -448,27 +474,43 @@ export default function Simulation() {
             </TabsList>
 
             <TabsContent value="dados" className="space-y-6">
-              {activeScenario?.formData && (
-                <SimulationForm
-                  data={activeScenario.formData}
-                  onChange={handleFormDataChange}
-                  profiles={profiles.map(p => ({ 
-                    id: p.id, 
-                    first_name: p.first_name || '', 
-                    last_name: p.last_name || '' 
-                  }))}
-                  matrixSuggestions={matrixSuggestions}
-                  onMatrixLookup={loadMatrixSuggestions}
-                  historicalHints={historicalHints}
-                />
-              )}
+              <SimulationForm
+                data={formData}
+                onChange={handleFormDataChange}
+                profiles={profiles.map(p => ({ 
+                  id: p.id, 
+                  first_name: p.first_name || '', 
+                  last_name: p.last_name || '' 
+                }))}
+                matrixSuggestions={matrixSuggestions}
+                onMatrixLookup={loadMatrixSuggestions}
+                historicalHints={historicalHints}
+              />
             </TabsContent>
 
             <TabsContent value="resultados" className="space-y-6">
               {result && isValid ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <DrePecuarista result={result} formData={completeFormData} />
-                  <DreBoitel result={result} formData={completeFormData} />
+                  <div className="text-center py-12">
+                    <h3 className="text-lg font-semibold mb-4">DRE Pecuarista</h3>
+                    <p className="text-muted-foreground">
+                      Aguardando interface atualizada para nova estrutura
+                    </p>
+                    <div className="mt-4 text-sm bg-blue-50 p-4 rounded">
+                      <p>Margem Total: {formatCurrency(result.margin_total)}</p>
+                      <p>Spread: {formatCurrency(result.spread_r_per_at)} R$/@</p>
+                    </div>
+                  </div>
+                  <div className="text-center py-12">
+                    <h3 className="text-lg font-semibold mb-4">DRE Boitel</h3>
+                    <p className="text-muted-foreground">
+                      Aguardando interface atualizada para nova estrutura
+                    </p>
+                    <div className="mt-4 text-sm bg-green-50 p-4 rounded">
+                      <p>Custo por Cabeça: {formatCurrency(result.cost_per_animal)}</p>
+                      <p>Custo por Arroba: {formatCurrency(result.cost_per_arrouba)}</p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12">

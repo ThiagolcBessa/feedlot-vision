@@ -23,14 +23,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import type { SimulationInput } from '@/services/calculations';
+import type { SimulationFormType } from '@/schemas/simulationSchema';
 
 export interface Scenario {
   id: string;
   name: string;
   isActive: boolean;
-  formData: Partial<SimulationInput> & { title: string; notes?: string };
-  businessData: any;
+  formData: SimulationFormType;
+  businessData?: any;
 }
 
 interface ScenariosManagerProps {
@@ -83,7 +83,33 @@ export function ScenariosManager({
         id: `scenario-${Date.now()}`,
         name: newScenarioName.trim(),
         isActive: false,
-        formData: activeScenario?.formData ? { ...activeScenario.formData } : { title: '' },
+        formData: activeScenario?.formData ? { ...activeScenario.formData } : {
+          title: 'Novo Cenário',
+          pecuarista_name: '',
+          originator_id: '',
+          date_ref: new Date(),
+          unit_code: '',
+          dieta: '',
+          scale_type: 'Balanção',
+          modalidade: 'Diária',
+          quebra_fazenda_pct: 0.02,
+          quebra_balanca_pct: 0.01,
+          qtd_animais: 100,
+          tipo_animal: '',
+          peso_fazenda_kg: 0,
+          peso_entrada_balancao_kg: 0,
+          peso_entrada_balancinha_kg: 0,
+          dias_cocho: 120,
+          gmd_kg_dia: 1.4,
+          rc_pct: 0.53,
+          dmi_kg_dia: 0,
+          custo_ms_kg: 0.45,
+          rendimento_boi_magro_prod_pct: 0.50,
+          preco_boi_magro_r_por_arroba: 165.0,
+          preco_boi_gordo_r_por_arroba: 185.0,
+          agio_magro_r: 2.5,
+          notes: '',
+        },
         businessData: activeScenario?.businessData ? { ...activeScenario.businessData } : {
           pecuarista_name: '',
           originator_id: '',
@@ -253,10 +279,10 @@ export function ScenariosManager({
               {/* Quick scenario stats */}
               <div className="mt-2 text-xs text-muted-foreground">
                 <div className="grid grid-cols-2 gap-1">
-                  <span>Peso: {scenario.formData?.entry_weight_kg || 0}kg</span>
-                  <span>Dias: {scenario.formData?.days_on_feed || 0}</span>
-                  <span>GMD: {scenario.formData?.adg_kg_day || 0}kg/d</span>
-                  <span>Venda: R${scenario.formData?.selling_price_per_at || 0}/@</span>
+                  <span>Peso: {scenario.formData?.peso_fazenda_kg || 0}kg</span>
+                  <span>Dias: {scenario.formData?.dias_cocho || 0}</span>
+                  <span>GMD: {scenario.formData?.gmd_kg_dia || 0}kg/d</span>
+                  <span>Venda: R${scenario.formData?.preco_boi_gordo_r_por_arroba || 0}/@</span>
                 </div>
               </div>
             </div>
