@@ -17,7 +17,7 @@ const items = [
   { title: 'Premissas', url: '/premises', icon: Building2 },
   { title: 'Simulação', url: '/simulation', icon: Calculator },
   { title: 'Simulações', url: '/simulations', icon: BarChart3 },
-  { title: 'Cadastros', url: '/registries', icon: Database },
+  { title: 'Cadastros', url: '/cadastros', icon: Database },
   { title: 'Comparar', url: '/compare', icon: GitCompare },
   { title: 'Upload', url: '/uploads', icon: Upload },
 ];

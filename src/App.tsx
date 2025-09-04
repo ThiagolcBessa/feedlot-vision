@@ -15,9 +15,15 @@ import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 import Premises from "./pages/Premises";
 import Registries from "./pages/Registries";
+import RegistriesIndex from "./pages/RegistriesIndex";
 import Uploads from "./pages/Uploads";
 import Compare from "./pages/Compare";
 import Settings from "./pages/Settings";
+import Originadores from "./pages/cadastros/Originadores";
+import Unidades from "./pages/cadastros/Unidades";
+import TiposAnimal from "./pages/cadastros/TiposAnimal";
+import Modalidades from "./pages/cadastros/Modalidades";
+import Dietas from "./pages/cadastros/Dietas";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +81,54 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Premises />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <RegistriesIndex />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros/originadores" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Originadores />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros/unidades" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Unidades />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros/tipos-animal" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <TiposAnimal />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros/modalidades" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Modalidades />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cadastros/dietas" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Dietas />
                 </AppLayout>
               </ProtectedRoute>
             } />

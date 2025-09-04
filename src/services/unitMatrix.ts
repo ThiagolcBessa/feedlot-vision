@@ -153,14 +153,9 @@ export async function findMatrixRow(params: MatrixLookupParams): Promise<MatrixS
  */
 export async function fetchUnits() {
   try {
-    // Return mock data that matches the expected structure
-    return [
-      { code: 'CGA', name: 'CGA Unit', state: 'GO' },
-      { code: 'CBS', name: 'CBS Unit', state: 'MS' },
-      { code: 'CCF', name: 'CCF Unit', state: 'MT' },
-      { code: 'CLV', name: 'CLV Unit', state: 'GO' },
-      { code: 'CPN', name: 'CPN Unit', state: 'MT' },
-    ];
+    // Use registry service instead
+    const { fetchUnits } = await import('./registryServices');
+    return await fetchUnits();
   } catch (error) {
     console.error('Error in fetchUnits:', error);
     return [];
@@ -173,7 +168,9 @@ export async function fetchUnits() {
 export async function fetchDietasForUnit(unit_code: string) {
   try {
     console.log('Fetching dietas for unit:', unit_code);
-    return ['Volumoso', 'Grão'];
+    // Use registry service instead
+    const { fetchDietas } = await import('./registryServices');
+    return await fetchDietas();
   } catch (error) {
     console.error('Error in fetchDietasForUnit:', error);
     return [];
@@ -186,7 +183,9 @@ export async function fetchDietasForUnit(unit_code: string) {
 export async function fetchAnimalTypesForSelection(unit_code: string, dieta: string) {
   try {
     console.log('Fetching animal types for:', { unit_code, dieta });
-    return ['Boi Nelore', 'Novilha', 'Vaca'];
+    // Use registry service instead
+    const { fetchAnimalTypes } = await import('./registryServices');
+    return await fetchAnimalTypes();
   } catch (error) {
     console.error('Error in fetchAnimalTypesForSelection:', error);
     return [];
@@ -199,7 +198,9 @@ export async function fetchAnimalTypesForSelection(unit_code: string, dieta: str
 export async function fetchModalidadesForSelection(unit_code: string, dieta: string, tipo_animal: string) {
   try {
     console.log('Fetching modalidades for:', { unit_code, dieta, tipo_animal });
-    return ['Diária', 'Arroba Prod.'];
+    // Use registry service instead
+    const { fetchModalidades } = await import('./registryServices');
+    return await fetchModalidades();
   } catch (error) {
     console.error('Error in fetchModalidadesForSelection:', error);
     return [];
