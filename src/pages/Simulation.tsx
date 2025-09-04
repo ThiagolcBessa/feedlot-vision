@@ -297,6 +297,79 @@ export default function Simulation() {
         </div>
 
         <TabsContent value="animal" className="space-y-6">
+          {/* NEW: Dados do Negócio Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dados do Negócio</CardTitle>
+              <CardDescription>
+                Informações de identificação e parâmetros do negócio
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pecuarista">Pecuarista *</Label>
+                  <Input
+                    id="pecuarista"
+                    placeholder="NOME COMPLETO MAIÚSCULO"
+                    className="uppercase"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit_code">Unidade</Label>
+                  <select className="w-full p-2 border rounded">
+                    <option value="CGA">CGA - CGA Unit</option>
+                    <option value="CBS">CBS - CBS Unit</option>
+                    <option value="CCF">CCF - CCF Unit</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modalidade">Modalidade</Label>
+                  <select className="w-full p-2 border rounded">
+                    <option value="Diária">Diária</option>
+                    <option value="Arroba Prod.">Arroba Prod.</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dieta">Dieta</Label>
+                  <select className="w-full p-2 border rounded">
+                    <option value="Volumoso">Volumoso</option>
+                    <option value="Grão">Grão</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_animal">Tipo Animal</Label>
+                  <select className="w-full p-2 border rounded">
+                    <option value="Boi Nelore">Boi Nelore</option>
+                    <option value="Novilha">Novilha</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="qtd_animais">Qtd. Animais</Label>
+                  <Input
+                    id="qtd_animais"
+                    type="number"
+                    placeholder="1000"
+                  />
+                </div>
+              </div>
+              
+              {/* Service Price Display */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Preço de Serviço & Etiqueta</h4>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Preço:</span>
+                    <span className="font-bold ml-2">R$ 227,16/cab/dia</span>
+                  </div>
+                  <div className="px-3 py-1 bg-blue-100 rounded-full text-sm">
+                    CGABoi Nelore45809Diária
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Dados do Animal e Performance</CardTitle>
@@ -342,19 +415,23 @@ export default function Simulation() {
                   <p className="text-xs text-muted-foreground">Recomendado: 90-180 dias</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="adg">Ganho Médio Diário (kg/dia) *</Label>
-                  <Input
-                    id="adg"
-                    type="number"
-                    step="0.1"
-                    value={formData.adg_kg_day}
-                    onChange={(e) => handleInputChange('adg_kg_day', e.target.value)}
-                    placeholder="1.4"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">Típico: 1.0-1.8 kg/dia</p>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adg">Ganho Médio Diário (kg/dia) *</Label>
+                    <Input
+                      id="adg"
+                      type="number"
+                      step="0.1"
+                      value={formData.adg_kg_day}
+                      onChange={(e) => handleInputChange('adg_kg_day', e.target.value)}
+                      placeholder="1.4"
+                      required
+                    />
+                    <div className="text-xs space-y-1">
+                      <p className="text-muted-foreground">Típico: 1.0-1.8 kg/dia</p>
+                      <p className="text-blue-600">Mediana Unidade (12m): 1.6 kg/dia</p>
+                      <p className="text-green-600">Mediana Originador (12m): 1.5 kg/dia</p>
+                    </div>
+                  </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="dmi_pct">Consumo MS (% Peso Vivo)</Label>
