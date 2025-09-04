@@ -466,7 +466,7 @@ export default function Simulation() {
       };
 
       const result = await orchestrator.saveSimulation(
-        activeScenario.businessData,
+        activeScenario?.businessData || {},
         completeFormData,
         premises,
         isEditing,
@@ -566,19 +566,21 @@ export default function Simulation() {
 
             <TabsContent value="animal" className="space-y-6">
               {/* Business Data Form */}
-              <BusinessDataForm
-                data={activeScenario.businessData}
-                onChange={(newBusinessData) => updateScenario(activeScenarioId, { businessData: newBusinessData })}
-                profiles={profiles.map(p => ({ 
-                  id: p.id, 
-                  first_name: p.first_name || '', 
-                  last_name: p.last_name || '' 
-                }))}
-                matrixSuggestions={matrixSuggestions}
-                onMatrixLookup={loadMatrixSuggestions}
-                onShowPremises={() => setShowPremisesModal(true)}
-                entryWeight={activeScenario.formData.entry_weight_kg}
-              />
+              {activeScenario && (
+                <BusinessDataForm
+                  data={activeScenario.businessData}
+                  onChange={(newBusinessData) => updateScenario(activeScenarioId, { businessData: newBusinessData })}
+                  profiles={profiles.map(p => ({ 
+                    id: p.id, 
+                    first_name: p.first_name || '', 
+                    last_name: p.last_name || '' 
+                  }))}
+                  matrixSuggestions={matrixSuggestions}
+                  onMatrixLookup={loadMatrixSuggestions}
+                  onShowPremises={() => setShowPremisesModal(true)}
+                  entryWeight={activeScenario.formData.entry_weight_kg}
+                />
+              )}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-blue-700 dark:text-blue-400">Dados do Negócio</CardTitle>
