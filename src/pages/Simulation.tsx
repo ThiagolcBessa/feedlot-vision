@@ -13,6 +13,7 @@ import { SimulationForm } from '@/components/SimulationForm';
 import { TaxasFreteForm } from '@/components/TaxasFreteForm';
 import { DrePecuaristaMatrix } from '@/components/DrePecuaristaMatrix';
 import { DreBoitelMatrix } from '@/components/DreBoitelMatrix';
+import { PremissasLink } from '@/components/PremissasLink';
 import { 
   findMatrixRow, 
   type MatrixSuggestions 
@@ -561,16 +562,31 @@ export default function Simulation() {
 
             <TabsContent value="resultados" className="space-y-6">
               {matrixSuggestions && dreData ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <DrePecuaristaMatrix 
-                    data={dreData.pecuarista} 
-                    qtdAnimais={formData.qtd_animais || 0}
-                  />
-                  <DreBoitelMatrix 
-                    data={dreData.boitel} 
-                    qtdAnimais={formData.qtd_animais || 0}
-                  />
-                </div>
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <DrePecuaristaMatrix 
+                      data={dreData.pecuarista} 
+                      qtdAnimais={formData.qtd_animais || 0}
+                    />
+                    <DreBoitelMatrix 
+                      data={dreData.boitel} 
+                      qtdAnimais={formData.qtd_animais || 0}
+                    />
+                  </div>
+                  
+                  {/* Premissas Link */}
+                  {formData.unit_code && (
+                    <div className="flex justify-center pt-4">
+                      <PremissasLink
+                        unit_code={formData.unit_code}
+                        modalidade={formData.modalidade}
+                        dieta={formData.dieta}
+                        tipo_animal={formData.tipo_animal}
+                        highlightId={matrixSuggestions.matched_row?.id}
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">

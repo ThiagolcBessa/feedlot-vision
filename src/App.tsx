@@ -14,6 +14,7 @@ import Simulations from "./pages/Simulations";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 import Premises from "./pages/Premises";
+import Premissas from "./pages/Premissas";
 import Registries from "./pages/Registries";
 import RegistriesIndex from "./pages/RegistriesIndex";
 import Uploads from "./pages/Uploads";
@@ -73,6 +74,14 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Simulations />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/premissas" element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Premissas />
                 </AppLayout>
               </ProtectedRoute>
             } />
