@@ -10,14 +10,16 @@ import { formatCurrency } from '@/services/calculations';
 import { useSimCalculator } from '@/hooks/useSimCalculator';
 import { ScenariosManager, Scenario } from '@/components/ScenariosManager';
 import { SimulationForm } from '@/components/SimulationForm';
+import { TaxasFreteForm } from '@/components/TaxasFreteForm';
+import { DrePecuaristaMatrix } from '@/components/DrePecuaristaMatrix';
+import { DreBoitelMatrix } from '@/components/DreBoitelMatrix';
 import { 
   findMatrixRow, 
   type MatrixSuggestions 
 } from '@/services/unitMatrix';
+import { calculateMatrixDrivenDRE, type DREPecuaristaData, type DREBoitelData } from '@/services/matrixCalculator';
 import { SaveOrchestrator } from '@/services/saveOrchestrator';
 import { simulationSchema, type SimulationFormType } from '@/schemas/simulationSchema';
-import { DrePecuarista } from '@/components/DrePecuarista';
-import { DreBoitel } from '@/components/DreBoitel';
 
 export default function Simulation() {
   const { user } = useAuth();
@@ -41,6 +43,20 @@ export default function Simulation() {
   
   // Historical medians for hints
   const [historicalHints, setHistoricalHints] = useState<{[key: string]: { unit_median?: number; originator_median?: number }}>({});
+  
+  // User-editable fields (not from matrix)
+  const [userEditableFields, setUserEditableFields] = useState({
+    frete_confinamento_r: 0,
+    frete_pecuarista_r: 0,
+    taxa_abate_r: 0,
+    icms_devolucao_r: 0,
+  });
+  
+  // DRE calculation results
+  const [dreData, setDreData] = useState<{
+    pecuarista: DREPecuaristaData;
+    boitel: DREBoitelData;
+  } | null>(null);
 
   // Initialize default scenario on mount
   useEffect(() => {
@@ -178,6 +194,13 @@ export default function Simulation() {
       loadMatrixSuggestions();
     }
   }, [formData.unit_code, formData.modalidade, formData.dieta, formData.tipo_animal, formData.peso_fazenda_kg]);
+  
+  // Recalculate DREs when matrix suggestions change
+  useEffect(() => {
+    if (matrixSuggestions) {
+      calculateDREs(formData, matrixSuggestions, userEditableFields);
+    }
+  }, [matrixSuggestions, formData, userEditableFields]);
 
   const handleFormDataChange = (newFormData: SimulationFormType) => {
     // Update current scenario
@@ -186,6 +209,45 @@ export default function Simulation() {
         ? { ...scenario, formData: newFormData }
         : scenario
     ));
+    
+    // Recalculate DREs when form data changes
+    calculateDREs(newFormData, matrixSuggestions, userEditableFields);
+  };
+
+  const handleUserEditableChange = (field: string, value: number) => {
+    const newUserFields = { ...userEditableFields, [field]: value };
+    setUserEditableFields(newUserFields);
+    
+    // Recalculate DREs when user editable fields change
+    calculateDREs(formData, matrixSuggestions, newUserFields);
+  };
+  
+  // Calculate DREs whenever inputs change
+  const calculateDREs = (currentFormData: SimulationFormType, currentMatrixSuggestions: MatrixSuggestions | null, currentUserFields: any) => {
+    if (!currentMatrixSuggestions || !currentFormData.qtd_animais || !currentFormData.preco_boi_gordo_r_por_arroba) {
+      setDreData(null);
+      return;
+    }
+    
+    try {
+      const calculationInputs = {
+        formData: currentFormData,
+        matrixSuggestions: currentMatrixSuggestions,
+        preco_boi_magro_r_por_arroba: currentFormData.preco_boi_magro_r_por_arroba || 0,
+        preco_boi_gordo_r_por_arroba: currentFormData.preco_boi_gordo_r_por_arroba || 0,
+        agio_magro_r: currentFormData.agio_magro_r || 0,
+        frete_confinamento_r: currentUserFields.frete_confinamento_r || 0,
+        frete_pecuarista_r: currentUserFields.frete_pecuarista_r || 0,
+        taxa_abate_r: currentUserFields.taxa_abate_r || 0,
+        icms_devolucao_r: currentUserFields.icms_devolucao_r || 0,
+      };
+      
+      const result = calculateMatrixDrivenDRE(calculationInputs);
+      setDreData(result);
+    } catch (error) {
+      console.error('Error calculating DREs:', error);
+      setDreData(null);
+    }
   };
 
   // Scenarios Management Functions
@@ -486,36 +548,33 @@ export default function Simulation() {
                 onMatrixLookup={loadMatrixSuggestions}
                 historicalHints={historicalHints}
               />
+              
+              {/* Taxas & Fretes - User editable */}
+              <TaxasFreteForm
+                frete_confinamento_r={userEditableFields.frete_confinamento_r}
+                frete_pecuarista_r={userEditableFields.frete_pecuarista_r}
+                taxa_abate_r={userEditableFields.taxa_abate_r}
+                icms_devolucao_r={userEditableFields.icms_devolucao_r}
+                onChange={handleUserEditableChange}
+              />
             </TabsContent>
 
             <TabsContent value="resultados" className="space-y-6">
-              {result && isValid ? (
+              {matrixSuggestions && dreData ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="text-center py-12">
-                    <h3 className="text-lg font-semibold mb-4">DRE Pecuarista</h3>
-                    <p className="text-muted-foreground">
-                      Aguardando interface atualizada para nova estrutura
-                    </p>
-                    <div className="mt-4 text-sm bg-blue-50 p-4 rounded">
-                      <p>Margem Total: {formatCurrency(result.margin_total)}</p>
-                      <p>Spread: {formatCurrency(result.spread_r_per_at)} R$/@</p>
-                    </div>
-                  </div>
-                  <div className="text-center py-12">
-                    <h3 className="text-lg font-semibold mb-4">DRE Boitel</h3>
-                    <p className="text-muted-foreground">
-                      Aguardando interface atualizada para nova estrutura
-                    </p>
-                    <div className="mt-4 text-sm bg-green-50 p-4 rounded">
-                      <p>Custo por Cabeça: {formatCurrency(result.cost_per_animal)}</p>
-                      <p>Custo por Arroba: {formatCurrency(result.cost_per_arrouba)}</p>
-                    </div>
-                  </div>
+                  <DrePecuaristaMatrix 
+                    data={dreData.pecuarista} 
+                    qtdAnimais={formData.qtd_animais || 0}
+                  />
+                  <DreBoitelMatrix 
+                    data={dreData.boitel} 
+                    qtdAnimais={formData.qtd_animais || 0}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
-                    Complete os dados do negócio para visualizar os resultados
+                    Complete os dados do negócio para visualizar os DREs
                   </p>
                 </div>
               )}

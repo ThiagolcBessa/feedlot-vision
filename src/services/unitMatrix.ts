@@ -20,6 +20,18 @@ export interface UnitMatrixRow {
   concat_label: string;
   faixa_label: string | null;
   is_active: boolean;
+  
+  // Additional Boitel operational costs from matrix
+  ctr_r?: number | null; // CTR cost
+  cf_r?: number | null; // Fixed cost  
+  corp_r?: number | null; // Corporate cost
+  depr_r?: number | null; // Depreciation
+  fin_r?: number | null; // Financial cost
+  custo_fixo_outros_r?: number | null; // Other fixed costs
+  sanitario_pct?: number | null; // Sanitary %
+  mortes_pct?: number | null; // Mortality %
+  rejeito_pct?: number | null; // Reject %
+  custo_ms_dia_racao_kg?: number | null; // Feed cost per kg MS
 }
 
 export interface MatrixLookupParams {
@@ -41,6 +53,18 @@ export interface MatrixSuggestions {
   service_price_base?: number;
   concat_label?: string;
   matched_row?: UnitMatrixRow;
+  
+  // Boitel operational costs from matrix
+  ctr_r?: number;
+  cf_r?: number;
+  corp_r?: number;
+  depr_r?: number;
+  fin_r?: number;
+  custo_fixo_outros_r?: number;
+  sanitario_pct?: number;
+  mortes_pct?: number;
+  rejeito_pct?: number;
+  custo_ms_dia_racao_kg?: number;
 }
 
 /**
@@ -74,6 +98,18 @@ export async function findMatrixRow(params: MatrixLookupParams): Promise<MatrixS
       concat_label: `${params.unit_code}${params.tipo_animal}45809${params.modalidade}`,
       faixa_label: `300-450kg`,
       is_active: true,
+      
+      // Boitel operational costs from matrix
+      ctr_r: 45.20,
+      cf_r: 38.50,
+      corp_r: 12.30,
+      depr_r: 28.75,
+      fin_r: 15.60,
+      custo_fixo_outros_r: 22.10,
+      sanitario_pct: 1.2,
+      mortes_pct: 2.1,
+      rejeito_pct: 1.8,
+      custo_ms_dia_racao_kg: 0.58,
     };
 
     const suggestions: MatrixSuggestions = {
@@ -91,6 +127,18 @@ export async function findMatrixRow(params: MatrixLookupParams): Promise<MatrixS
         : mockRow.diaria_r_por_cab_dia,
       concat_label: mockRow.concat_label,
       matched_row: mockRow,
+      
+      // Boitel operational costs from matrix
+      ctr_r: mockRow.ctr_r,
+      cf_r: mockRow.cf_r,
+      corp_r: mockRow.corp_r,
+      depr_r: mockRow.depr_r,
+      fin_r: mockRow.fin_r,
+      custo_fixo_outros_r: mockRow.custo_fixo_outros_r,
+      sanitario_pct: mockRow.sanitario_pct,
+      mortes_pct: mockRow.mortes_pct,
+      rejeito_pct: mockRow.rejeito_pct,
+      custo_ms_dia_racao_kg: mockRow.custo_ms_dia_racao_kg,
     };
     
     return suggestions;

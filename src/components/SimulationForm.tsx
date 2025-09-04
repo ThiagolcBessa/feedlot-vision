@@ -292,7 +292,8 @@ export function SimulationForm({
       {/* ZOOTÉCNICOS */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-blue-700 dark:text-blue-400">Zootécnicos</CardTitle>
+          <CardTitle className="text-blue-700 dark:text-blue-400">Zootécnicos (Sugestões da Matriz)</CardTitle>
+          <CardDescription>Valores sugeridos baseados na matriz de preços. Editáveis se necessário.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -301,9 +302,10 @@ export function SimulationForm({
               <Input
                 id="dias_cocho"
                 type="number"
-                value={data.dias_cocho || ''}
+                value={matrixSuggestions?.dias_cocho || data.dias_cocho || ''}
                 onChange={(e) => handleFieldChange('dias_cocho', Number(e.target.value))}
-                className="bg-blue-50 border-blue-200"
+                className="bg-green-50 border-green-200"
+                placeholder={matrixSuggestions?.dias_cocho?.toString()}
               />
               <HistoricalHint 
                 fieldName="dias_cocho" 
@@ -317,9 +319,10 @@ export function SimulationForm({
                 id="gmd"
                 type="number"
                 step="0.1"
-                value={data.gmd_kg_dia || ''}
+                value={matrixSuggestions?.gmd_kg_dia || data.gmd_kg_dia || ''}
                 onChange={(e) => handleFieldChange('gmd_kg_dia', Number(e.target.value))}
-                className="bg-blue-50 border-blue-200"
+                className="bg-green-50 border-green-200"
+                placeholder={matrixSuggestions?.gmd_kg_dia?.toString()}
               />
               <HistoricalHint 
                 fieldName="gmd_kg_dia" 
@@ -333,9 +336,10 @@ export function SimulationForm({
                 id="rc"
                 type="number"
                 step="0.1"
-                value={getPercentageValue('rc_pct')}
+                value={matrixSuggestions?.pct_rc || getPercentageValue('rc_pct')}
                 onChange={(e) => handlePercentageChange('rc_pct', Number(e.target.value))}
-                className="bg-blue-50 border-blue-200"
+                className="bg-green-50 border-green-200"
+                placeholder={matrixSuggestions?.pct_rc?.toString()}
               />
             </div>
             <div className="space-y-2">
@@ -344,9 +348,10 @@ export function SimulationForm({
                 id="dmi"
                 type="number"
                 step="0.1"
-                value={data.dmi_kg_dia || ''}
+                value={matrixSuggestions?.consumo_ms_kg_dia || data.dmi_kg_dia || ''}
                 onChange={(e) => handleFieldChange('dmi_kg_dia', Number(e.target.value))}
-                className="bg-blue-50 border-blue-200"
+                className="bg-green-50 border-green-200"
+                placeholder={matrixSuggestions?.consumo_ms_kg_dia?.toString()}
               />
               <HistoricalHint 
                 fieldName="dmi_kg_dia" 
@@ -360,9 +365,10 @@ export function SimulationForm({
                 id="custo_ms"
                 type="number"
                 step="0.01"
-                value={data.custo_ms_kg || ''}
+                value={matrixSuggestions?.custo_ms_dia_racao_kg || data.custo_ms_kg || ''}
                 onChange={(e) => handleFieldChange('custo_ms_kg', Number(e.target.value))}
-                className="bg-blue-50 border-blue-200"
+                className="bg-green-50 border-green-200"
+                placeholder={matrixSuggestions?.custo_ms_dia_racao_kg?.toString()}
               />
             </div>
           </div>
@@ -448,17 +454,17 @@ export function SimulationForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label>Preço Base (R$/@)</Label>
+                <Label>Preço Base (R$/{data.modalidade === 'Diária' ? 'cab/dia' : '@'})</Label>
                 <Input
-                  value={matrixSuggestions.service_price?.toFixed(2) || '0.00'}
+                  value={matrixSuggestions.service_price_base?.toFixed(2) || '0.00'}
                   disabled
                   className="bg-gray-100"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Preço Serviço ({data.modalidade === 'Diária' ? 'R$/cab/dia' : 'R$/@'})</Label>
+                <Label>Preço Final (R$/{data.modalidade === 'Diária' ? 'cab/dia' : '@'})</Label>
                 <Input
                   value={matrixSuggestions.service_price?.toFixed(2) || '0.00'}
                   disabled
@@ -467,9 +473,30 @@ export function SimulationForm({
               </div>
               <div className="space-y-2">
                 <Label>Etiqueta</Label>
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-sm h-10 flex items-center justify-center">
                   {matrixSuggestions.concat_label || 'N/A'}
                 </Badge>
+              </div>
+              <div className="space-y-2">
+                <Label>Faixa Peso</Label>
+                <Badge variant="outline" className="text-sm h-10 flex items-center justify-center">
+                  {matrixSuggestions.matched_row?.faixa_label || 'N/A'}
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Matrix operational costs preview - Read only */}
+            <div className="mt-4 pt-4 border-t">
+              <div className="text-sm font-medium mb-2 text-muted-foreground">Custos Operacionais da Matriz (somente leitura):</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div>CTR: R$ {matrixSuggestions.ctr_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>CF: R$ {matrixSuggestions.cf_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>Corp: R$ {matrixSuggestions.corp_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>Depr: R$ {matrixSuggestions.depr_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>Fin: R$ {matrixSuggestions.fin_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>Outros: R$ {matrixSuggestions.custo_fixo_outros_r?.toFixed(2) || '0.00'}/cab</div>
+                <div>Sanitário: {matrixSuggestions.sanitario_pct?.toFixed(1) || '0.0'}%</div>
+                <div>Rejeito: {matrixSuggestions.rejeito_pct?.toFixed(1) || '0.0'}%</div>
               </div>
             </div>
           </CardContent>
