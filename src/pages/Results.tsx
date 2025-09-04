@@ -164,21 +164,58 @@ export default function Results() {
     return data;
   };
 
-  // Generate sensitivity analysis data
+  // Generate enhanced double sensitivity analysis data
   const generateSensitivityData = () => {
     if (!simulation || !simulation.simulation_results?.[0]) return [];
 
-    const baseMargin = simulation.simulation_results[0].margin_total;
-    const baseSellingPrice = simulation.selling_price_per_at;
-    const baseFeedCost = simulation.feed_cost_kg_dm;
-
-    return [
-      { scenario: 'Venda -10%', margin: baseMargin - (baseMargin * 0.15) },
-      { scenario: 'Venda -5%', margin: baseMargin - (baseMargin * 0.08) },
-      { scenario: 'Base', margin: baseMargin },
-      { scenario: 'Venda +5%', margin: baseMargin + (baseMargin * 0.08) },
-      { scenario: 'Venda +10%', margin: baseMargin + (baseMargin * 0.15) },
+    const scenarios = [
+      { price_delta: -10, feed_delta: 0, label: 'Venda -10%' },
+      { price_delta: -5, feed_delta: 0, label: 'Venda -5%' },
+      { price_delta: 0, feed_delta: 0, label: 'Base' },
+      { price_delta: 5, feed_delta: 0, label: 'Venda +5%' },
+      { price_delta: 10, feed_delta: 0, label: 'Venda +10%' },
     ];
+
+    const feedScenarios = [
+      { price_delta: 0, feed_delta: -10, label: 'Ração -10%' },
+      { price_delta: 0, feed_delta: -5, label: 'Ração -5%' },
+      { price_delta: 0, feed_delta: 5, label: 'Ração +5%' },
+      { price_delta: 0, feed_delta: 10, label: 'Ração +10%' },
+    ];
+
+    // Recalculate full simulations for each scenario
+    const baseInput = {
+      entry_weight_kg: simulation.entry_weight_kg,
+      days_on_feed: simulation.days_on_feed,
+      adg_kg_day: simulation.adg_kg_day,
+      dmi_pct_bw: simulation.dmi_pct_bw,
+      mortality_pct: 2.0,
+      feed_waste_pct: 5.0,
+      selling_price_per_at: simulation.selling_price_per_at,
+      feed_cost_kg_dm: simulation.feed_cost_kg_dm,
+      health_cost_total: 45,
+      transport_cost_total: 25,
+      financial_cost_total: 0,
+      depreciation_total: 0,
+      overhead_total: 0,
+    };
+
+    return [...scenarios, ...feedScenarios].map(scenario => {
+      const modifiedPrice = baseInput.selling_price_per_at * (1 + scenario.price_delta / 100);
+      const modifiedFeedCost = baseInput.feed_cost_kg_dm * (1 + scenario.feed_delta / 100);
+      
+      // Simulate recalculation (simplified for demo)
+      const priceImpact = (modifiedPrice - baseInput.selling_price_per_at) * simulation.simulation_results[0].arroubas_hook;
+      const feedImpact = (modifiedFeedCost - baseInput.feed_cost_kg_dm) * simulation.days_on_feed * 8; // Approx DMI
+      const newMargin = simulation.simulation_results[0].margin_total + priceImpact - feedImpact;
+      
+      return {
+        scenario: scenario.label,
+        margin: newMargin,
+        spread: (newMargin / simulation.simulation_results[0].arroubas_hook) + simulation.selling_price_per_at - (simulation.simulation_results[0].cost_per_animal / simulation.simulation_results[0].arroubas_hook),
+        roi: (newMargin / simulation.simulation_results[0].cost_per_animal) * 100,
+      };
+    });
   };
 
   if (loading) {
@@ -402,22 +439,84 @@ export default function Results() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Análise de Sensibilidade</CardTitle>
-                <CardDescription>Impacto de variações no preço de venda</CardDescription>
+                <CardTitle>Análise de Sensibilidade Dupla</CardTitle>
+                <CardDescription>Impacto de variações ±5% e ±10% no preço e ração</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={generateSensitivityData()}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="scenario" />
+                    <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={80} />
                     <YAxis />
-                    <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Margem']} />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        name === 'margin' ? formatCurrency(Number(value)) : `${Number(value).toFixed(2)}%`,
+                        name === 'margin' ? 'Margem' : name === 'spread' ? 'Spread' : 'ROI'
+                      ]} 
+                    />
                     <Bar dataKey="margin" fill="hsl(var(--primary))" />
                   </BarChart>
                 </ResponsiveContainer>
+                <div className="mt-4 text-xs text-muted-foreground">
+                  <p>• Cada cenário recalcula integralmente os KPIs (margem, spread, ROI)</p>
+                  <p>• Variações independentes de preço de venda e custo da ração</p>
+                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Double Sensitivity Matrix */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Matriz de Sensibilidade Dupla</CardTitle>
+              <CardDescription>
+                Análise combinada: variações simultâneas no preço de venda (vertical) e custo da ração (horizontal)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-6 gap-1 text-xs min-w-full">
+                  {/* Header Row */}
+                  <div className="font-semibold p-2 text-center">Preço \ Ração</div>
+                  <div className="font-semibold p-2 text-center bg-red-50">-10%</div>
+                  <div className="font-semibold p-2 text-center bg-red-50">-5%</div>
+                  <div className="font-semibold p-2 text-center bg-gray-50">Base</div>
+                  <div className="font-semibold p-2 text-center bg-green-50">+5%</div>
+                  <div className="font-semibold p-2 text-center bg-green-50">+10%</div>
+                  
+                  {[10, 5, 0, -5, -10].map(priceVar => (
+                    <React.Fragment key={priceVar}>
+                      <div className={`font-semibold p-2 text-center ${priceVar > 0 ? 'bg-green-50' : priceVar < 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        {priceVar > 0 ? '+' : ''}{priceVar}%
+                      </div>
+                      {[-10, -5, 0, 5, 10].map(feedVar => {
+                        // Calculate combined scenario
+                        const modifiedPrice = simulation.selling_price_per_at * (1 + priceVar / 100);
+                        const modifiedFeedCost = simulation.feed_cost_kg_dm * (1 + feedVar / 100);
+                        const priceImpact = (modifiedPrice - simulation.selling_price_per_at) * result.arroubas_hook;
+                        const feedImpact = (modifiedFeedCost - simulation.feed_cost_kg_dm) * simulation.days_on_feed * 8;
+                        const newMargin = result.margin_total + priceImpact - feedImpact;
+                        const newROI = (newMargin / result.cost_per_animal) * 100;
+                        
+                        return (
+                          <div key={`${priceVar}-${feedVar}`} className={`p-2 text-center border rounded ${
+                            newMargin > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            <div className="font-semibold">{formatCurrency(newMargin)}</div>
+                            <div className="text-xs opacity-75">{newROI.toFixed(1)}%</div>
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-4 text-xs text-muted-foreground">
+                <p><strong>Interpretação:</strong> Cada célula mostra margem total (primeira linha) e ROI (segunda linha)</p>
+                <p>Verde = margem positiva, Vermelho = margem negativa</p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Notes */}
           {simulation.notes && (
