@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { calculateSimulation } from '@/services/calculations';
-import { completeSimulationSchema, type BusinessDataType, type SimulationFormType } from '@/schemas/simulationSchema';
+import { simulationSchema, type SimulationFormType } from '@/schemas/simulationSchema';
 
 export interface SaveResult {
   success: boolean;
@@ -17,7 +17,6 @@ export class SaveOrchestrator {
   } = {};
 
   async saveSimulation(
-    businessData: BusinessDataType,
     formData: SimulationFormType,
     premises?: any,
     isEditing = false,
@@ -25,10 +24,7 @@ export class SaveOrchestrator {
   ): Promise<SaveResult> {
     try {
       // Step 1: Validate all fields
-      const validationResult = completeSimulationSchema.safeParse({
-        businessData,
-        formData
-      });
+      const validationResult = simulationSchema.safeParse(formData);
 
       if (!validationResult.success) {
         const errors = validationResult.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
@@ -50,7 +46,7 @@ export class SaveOrchestrator {
       }
 
       // Step 3: Upsert negotiations table
-      const negotiationId = await this.upsertNegotiation(businessData, isEditing);
+      const negotiationId = await this.upsertNegotiation(formData, isEditing);
       if (!negotiationId) {
         throw new Error('Failed to create/update negotiation');
       }
@@ -106,46 +102,92 @@ export class SaveOrchestrator {
   }
 
   private buildCalculationInput(formData: SimulationFormType, premises?: any) {
+    // Map new schema fields to calculation input
     return {
-      entry_weight_kg: formData.entry_weight_kg!,
-      days_on_feed: formData.days_on_feed!,
-      adg_kg_day: formData.adg_kg_day!,
-      dmi_pct_bw: formData.dmi_pct_bw || 2.5,
-      dmi_kg_day: formData.dmi_kg_day,
-      mortality_pct: formData.mortality_pct || 2.0,
-      feed_waste_pct: formData.feed_waste_pct || 5.0,
-      purchase_price_per_at: formData.purchase_price_per_at,
-      purchase_price_per_kg: formData.purchase_price_per_kg,
-      selling_price_per_at: formData.selling_price_per_at!,
-      feed_cost_kg_dm: formData.feed_cost_kg_dm!,
-      health_cost_total: formData.health_cost_total || 0,
-      transport_cost_total: formData.transport_cost_total || 0,
-      financial_cost_total: formData.financial_cost_total || 0,
-      depreciation_total: formData.depreciation_total || 0,
-      overhead_total: formData.overhead_total || 0,
+      entry_weight_kg: formData.peso_fazenda_kg || formData.peso_entrada_balancao_kg || formData.peso_entrada_balancinha_kg || 0,
+      days_on_feed: formData.dias_cocho || 0,
+      adg_kg_day: formData.gmd_kg_dia || 0,
+      dmi_pct_bw: 2.5, // Default value 
+      dmi_kg_day: formData.dmi_kg_dia,
+      mortality_pct: 2.0, // Default value
+      feed_waste_pct: 5.0, // Default value
+      purchase_price_per_at: formData.preco_boi_magro_r_por_arroba,
+      purchase_price_per_kg: undefined,
+      selling_price_per_at: formData.preco_boi_gordo_r_por_arroba || 0,
+      feed_cost_kg_dm: formData.custo_ms_kg || 0,
+      health_cost_total: 0, // Default value
+      transport_cost_total: 0, // Default value 
+      financial_cost_total: 0, // Default value
+      depreciation_total: 0, // Default value
+      overhead_total: 0, // Default value
       fixed_cost_daily_per_head: premises?.fixed_cost_daily_per_head || 0,
       admin_overhead_daily_per_head: premises?.admin_overhead_daily_per_head || 0,
-      carcass_yield_pct: premises?.carcass_yield_pct || 53,
-      use_average_weight: formData.use_average_weight ?? true,
+      carcass_yield_pct: formData.rc_pct ? formData.rc_pct * 100 : premises?.carcass_yield_pct || 53,
+      use_average_weight: true,
     };
   }
 
-  private async upsertNegotiation(businessData: BusinessDataType, isEditing: boolean): Promise<string | null> {
+  private async upsertNegotiation(formData: SimulationFormType, isEditing: boolean): Promise<string | null> {
     try {
-      // TODO: When negotiations table is added to typed schema, implement real upsert
-      // For now, we'll use a mock implementation since table exists but isn't typed
-      console.log('Creating negotiation for:', businessData.pecuarista);
-      
-      // In a real implementation, this would be:
-      // const { data, error } = await supabase
-      //   .from('negotiations')
-      //   .insert(negotiationData)
-      //   .select('id')
-      //   .single();
-      
-      // Return a deterministic mock ID based on business data
-      const mockId = `nego-${businessData.unit_code}-${Date.now()}`;
-      return mockId;
+      // Map unified form data to negotiations table structure
+      const negotiationData = {
+        pecuarista_name: formData.pecuarista_name,
+        originator_id: formData.originator_id,
+        date_ref: formData.date_ref,
+        unit_code: formData.unit_code,
+        dieta: formData.dieta,
+        scale_type: formData.scale_type,
+        modalidade: formData.modalidade,
+        
+        // Service prices - conditional based on modalidade
+        price_r_por_arroba: formData.modalidade === 'Arroba Prod.' ? formData.service_price : null,
+        daily_r_por_cab: formData.modalidade === 'Diária' ? formData.service_price : null,
+        concat_label: formData.concat_label,
+        
+        // Default freight/tax values - can be enhanced later
+        frete_confinamento_r: 0,
+        frete_pecuarista_r: 0,
+        icms_devolucao_r: 0,
+        taxa_abate_r: 0,
+        
+        // Lot data
+        qtd_animais: formData.qtd_animais,
+        tipo_animal: formData.tipo_animal,
+        peso_fazenda_kg: formData.peso_fazenda_kg,
+        peso_entrada_balancao_kg: formData.peso_entrada_balancao_kg,
+        peso_entrada_balancinha_kg: formData.peso_entrada_balancinha_kg,
+        
+        // Breakages (stored as fractions)
+        quebra_fazenda_pct: formData.quebra_fazenda_pct,
+        quebra_balanca_pct: formData.quebra_balanca_pct,
+        
+        // Zootechnical
+        dias_cocho: formData.dias_cocho,
+        gmd_kg_dia: formData.gmd_kg_dia,
+        rc_pct: formData.rc_pct,
+        dmi_kg_dia: formData.dmi_kg_dia,
+        custo_ms_kg: formData.custo_ms_kg,
+        
+        // Market
+        rendimento_boi_magro_prod_pct: formData.rendimento_boi_magro_prod_pct,
+        preco_boi_magro_r_por_arroba: formData.preco_boi_magro_r_por_arroba,
+        preco_boi_gordo_r_por_arroba: formData.preco_boi_gordo_r_por_arroba,
+        agio_magro_r: formData.agio_magro_r,
+      };
+
+      // Use raw insert with any type since negotiations table exists but isn't typed
+      const { data, error } = await (supabase as any)
+        .from('negotiations')
+        .insert(negotiationData)
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error creating negotiation:', error);
+        return null;
+      }
+
+      return data?.id || null;
     } catch (error) {
       console.error('Exception in upsertNegotiation:', error);
       return null;
@@ -158,32 +200,33 @@ export class SaveOrchestrator {
     isEditing: boolean,
     existingSimulationId?: string
   ): Promise<string | null> {
+    // Map minimal simulation data - most data is now in negotiations table
     const simulationData = {
-      title: formData.title,
+      title: formData.title || 'Simulação sem título',
       negotiation_id: negotiationId,
-      entry_weight_kg: formData.entry_weight_kg,
-      days_on_feed: formData.days_on_feed,
-      adg_kg_day: formData.adg_kg_day,
-      dmi_pct_bw: formData.dmi_pct_bw,
-      dmi_kg_day: formData.dmi_kg_day,
-      purchase_price_per_at: formData.purchase_price_per_at,
-      purchase_price_per_kg: formData.purchase_price_per_kg,
-      selling_price_per_at: formData.selling_price_per_at,
-      feed_cost_kg_dm: formData.feed_cost_kg_dm,
-      health_cost_total: formData.health_cost_total,
-      transport_cost_total: formData.transport_cost_total,
-      financial_cost_total: formData.financial_cost_total,
-      depreciation_total: formData.depreciation_total,
-      overhead_total: formData.overhead_total,
-      feed_waste_pct: formData.feed_waste_pct,
-      mortality_pct: formData.mortality_pct,
+      entry_weight_kg: formData.peso_fazenda_kg || formData.peso_entrada_balancao_kg || formData.peso_entrada_balancinha_kg || 0,
+      days_on_feed: formData.dias_cocho || 0,
+      adg_kg_day: formData.gmd_kg_dia || 0,
+      dmi_pct_bw: 2.5, // Default
+      dmi_kg_day: formData.dmi_kg_dia,
+      purchase_price_per_at: formData.preco_boi_magro_r_por_arroba,
+      purchase_price_per_kg: undefined,
+      selling_price_per_at: formData.preco_boi_gordo_r_por_arroba || 0,
+      feed_cost_kg_dm: formData.custo_ms_kg || 0,
+      health_cost_total: 0, // Default
+      transport_cost_total: 0, // Default
+      financial_cost_total: 0, // Default
+      depreciation_total: 0, // Default
+      overhead_total: 0, // Default
+      feed_waste_pct: 5.0, // Default
+      mortality_pct: 2.0, // Default
       notes: formData.notes,
     };
 
     if (isEditing && existingSimulationId) {
       const { data, error } = await supabase
         .from('simulations')
-        .update(simulationData)
+        .update(simulationData as any)
         .eq('id', existingSimulationId)
         .select('*')
         .single();
