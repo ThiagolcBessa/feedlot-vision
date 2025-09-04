@@ -10,7 +10,7 @@ import { Plus, Search, Eye, Copy, Trash2, Calendar, TrendingUp, TrendingDown } f
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { formatCurrency, formatPercentage } from '@/services/calculations';
+import { formatCurrency, formatPercentage, formatWeight } from '@/services/calculations';
 
 interface Simulation {
   id: string;

@@ -16,6 +16,7 @@ import Premises from "./pages/Premises";
 import Registries from "./pages/Registries";
 import Uploads from "./pages/Uploads";
 import Compare from "./pages/Compare";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -104,10 +105,7 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div className="p-6">
-                    <h1 className="text-2xl font-bold">Configurações</h1>
-                    <p className="text-muted-foreground mt-2">Em desenvolvimento...</p>
-                  </div>
+                  <Settings />
                 </AppLayout>
               </ProtectedRoute>
             } />
