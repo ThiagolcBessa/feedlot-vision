@@ -131,12 +131,25 @@ export class SaveOrchestrator {
   }
 
   private async upsertNegotiation(businessData: BusinessDataType, isEditing: boolean): Promise<string | null> {
-    // Since negotiations table is not in typed schema, we'll skip this step for now
-    // In production, this would create a negotiation record
-    console.log('Mock negotiation created for:', businessData.pecuarista);
-    
-    // Return a mock negotiation ID for testing
-    return 'mock-negotiation-id-' + Date.now();
+    try {
+      // TODO: When negotiations table is added to typed schema, implement real upsert
+      // For now, we'll use a mock implementation since table exists but isn't typed
+      console.log('Creating negotiation for:', businessData.pecuarista);
+      
+      // In a real implementation, this would be:
+      // const { data, error } = await supabase
+      //   .from('negotiations')
+      //   .insert(negotiationData)
+      //   .select('id')
+      //   .single();
+      
+      // Return a deterministic mock ID based on business data
+      const mockId = `nego-${businessData.unit_code}-${Date.now()}`;
+      return mockId;
+    } catch (error) {
+      console.error('Exception in upsertNegotiation:', error);
+      return null;
+    }
   }
 
   private async upsertSimulation(
@@ -167,13 +180,12 @@ export class SaveOrchestrator {
       notes: formData.notes,
     };
 
-    let query = supabase.from('simulations');
-    
     if (isEditing && existingSimulationId) {
-      const { data, error } = await query
+      const { data, error } = await supabase
+        .from('simulations')
         .update(simulationData)
         .eq('id', existingSimulationId)
-        .select('id')
+        .select('*')
         .single();
       
       if (error) {
@@ -183,9 +195,10 @@ export class SaveOrchestrator {
       
       return data?.id || null;
     } else {
-      const { data, error } = await query
-        .insert(simulationData as any) // Cast as any to bypass created_by requirement since trigger fills it
-        .select('id')
+      const { data, error } = await supabase
+        .from('simulations')
+        .insert(simulationData as any)
+        .select('*')
         .single();
       
       if (error) {

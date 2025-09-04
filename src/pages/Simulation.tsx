@@ -465,7 +465,7 @@ export default function Simulation() {
         overhead_total: activeScenario.formData.overhead_total || 0,
       };
 
-      await orchestrator.saveSimulation(
+      const result = await orchestrator.saveSimulation(
         activeScenario.businessData,
         completeFormData,
         premises,
@@ -473,17 +473,24 @@ export default function Simulation() {
         simulationId || undefined
       );
 
-      toast({
-        title: "Simulação salva com sucesso!",
-        description: "A simulação foi salva e está disponível na lista.",
-      });
-
-      navigate('/simulations');
+      if (result.success) {
+        toast({
+          title: "Simulação salva com sucesso!",
+          description: `${isEditing ? 'Simulação atualizada' : 'Nova simulação criada'} e disponível na lista.`,
+        });
+        navigate('/simulations');
+      } else {
+        toast({
+          title: "Erro ao salvar simulação",
+          description: result.error || "Erro inesperado durante o salvamento. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error saving simulation:', error);
       toast({
-        title: "Erro ao salvar",
-        description: error instanceof Error ? error.message : "Erro inesperado ao salvar a simulação.",
+        title: "Erro inesperado",
+        description: "Falha na comunicação com o servidor. Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
     } finally {
