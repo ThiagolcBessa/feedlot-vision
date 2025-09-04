@@ -24,6 +24,7 @@ import { formatCurrency, formatPercentage, formatWeight, formatArroubas } from '
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { DrePecuarista } from '@/components/DrePecuarista';
 import { DreBoitel } from '@/components/DreBoitel';
+import { calculateSimulation, calculateDoubleSensitivity, type SimulationInput, type SensitivityAnalysis } from '@/services/calculations';
 
 interface SimulationWithResults {
   id: string;
@@ -442,26 +443,57 @@ export default function Results() {
             <Card>
               <CardHeader>
                 <CardTitle>Análise de Sensibilidade Dupla</CardTitle>
-                <CardDescription>Impacto de variações ±5% e ±10% no preço e ração</CardDescription>
+                <CardDescription>Impacto de variações ±5% e ±10% no preço e ração com recálculo completo</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={generateSensitivityData()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={80} />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'margin' ? formatCurrency(Number(value)) : `${Number(value).toFixed(2)}%`,
-                        name === 'margin' ? 'Margem' : name === 'spread' ? 'Spread' : 'ROI'
-                      ]} 
-                    />
-                    <Bar dataKey="margin" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                  {/* Spread Analysis */}
+                  <div>
+                    <h4 className="font-medium mb-2">Spread (R$/@)</h4>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={generateSensitivityData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={60} fontSize={10} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Spread']} />
+                        <Line type="monotone" dataKey="spread" stroke="hsl(var(--primary))" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* ROI Analysis */}
+                  <div>
+                    <h4 className="font-medium mb-2">ROI (%)</h4>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={generateSensitivityData()}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="scenario" angle={-45} textAnchor="end" height={60} fontSize={10} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}%`, 'ROI']} />
+                        <Line type="monotone" dataKey="roi" stroke="hsl(var(--chart-2))" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Tornado Chart for Break-even */}
+                <div className="mt-6">
+                  <h4 className="font-medium mb-2">Break-even (R$/@) - Análise Tornado</h4>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={generateSensitivityData()} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="scenario" width={80} fontSize={10} />
+                      <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Break-even']} />
+                      <Bar dataKey="break_even" fill="hsl(var(--chart-3))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
                 <div className="mt-4 text-xs text-muted-foreground">
-                  <p>• Cada cenário recalcula integralmente os KPIs (margem, spread, ROI)</p>
-                  <p>• Variações independentes de preço de venda e custo da ração</p>
+                  <p>• <strong>Recálculo integral:</strong> Cada cenário usa o mecanismo completo de cálculo</p>
+                  <p>• <strong>Variáveis:</strong> Preço @ Fat e Custo Ração (MS)</p>
+                  <p>• <strong>Deltas:</strong> ±5% e ±10% aplicados independentemente</p>
                 </div>
               </CardContent>
             </Card>
