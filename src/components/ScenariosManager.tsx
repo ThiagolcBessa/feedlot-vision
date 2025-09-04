@@ -83,8 +83,27 @@ export function ScenariosManager({
         id: `scenario-${Date.now()}`,
         name: newScenarioName.trim(),
         isActive: false,
-        formData: activeScenario ? { ...activeScenario.formData } : { title: '' },
-        businessData: activeScenario ? { ...activeScenario.businessData } : {}
+        formData: activeScenario?.formData ? { ...activeScenario.formData } : { title: '' },
+        businessData: activeScenario?.businessData ? { ...activeScenario.businessData } : {
+          pecuarista_name: '',
+          originator_id: '',
+          date_ref: new Date().toISOString().split('T')[0],
+          unit_code: '',
+          dieta: '',
+          scale_type: 'Balancão',
+          quebra_fazenda_pct: 2.0,
+          quebra_balanca_pct: 1.0,
+          modalidade: '',
+          qtd_animais: 100,
+          tipo_animal: '',
+          peso_fazenda_kg: 0,
+          peso_entrada_balancao_kg: 0,
+          peso_entrada_balancinha_kg: 0,
+          rendimento_boi_magro_prod_pct: 52.5,
+          preco_boi_magro_r_por_arroba: 165.0,
+          preco_boi_gordo_r_por_arroba: 185.0,
+          agio_magro_r: 2.5,
+        }
       };
       
       onAddScenario();
@@ -234,10 +253,10 @@ export function ScenariosManager({
               {/* Quick scenario stats */}
               <div className="mt-2 text-xs text-muted-foreground">
                 <div className="grid grid-cols-2 gap-1">
-                  <span>Peso: {scenario.formData.entry_weight_kg || 0}kg</span>
-                  <span>Dias: {scenario.formData.days_on_feed || 0}</span>
-                  <span>GMD: {scenario.formData.adg_kg_day || 0}kg/d</span>
-                  <span>Venda: R${scenario.formData.selling_price_per_at || 0}/@</span>
+                  <span>Peso: {scenario.formData?.entry_weight_kg || 0}kg</span>
+                  <span>Dias: {scenario.formData?.days_on_feed || 0}</span>
+                  <span>GMD: {scenario.formData?.adg_kg_day || 0}kg/d</span>
+                  <span>Venda: R${scenario.formData?.selling_price_per_at || 0}/@</span>
                 </div>
               </div>
             </div>

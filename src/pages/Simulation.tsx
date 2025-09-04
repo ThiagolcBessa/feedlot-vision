@@ -247,7 +247,7 @@ export default function Simulation() {
   const handleScenarioChange = (scenarioId: string) => {
     setActiveScenarioId(scenarioId);
     const scenario = scenarios.find(s => s.id === scenarioId);
-    if (scenario) {
+    if (scenario && scenario.formData && scenario.businessData) {
       setFormData(scenario.formData);
       setBusinessData(scenario.businessData);
     }
@@ -269,7 +269,7 @@ export default function Simulation() {
 
   const handleDuplicateScenario = (scenarioId: string) => {
     const sourceScenario = scenarios.find(s => s.id === scenarioId);
-    if (sourceScenario) {
+    if (sourceScenario && sourceScenario.formData && sourceScenario.businessData) {
       const newScenarioId = `scenario-${Date.now()}`;
       const newScenario: Scenario = {
         id: newScenarioId,
