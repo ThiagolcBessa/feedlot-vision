@@ -17,22 +17,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatWeight, formatArroubas, formatPercentage } from '@/services/calculations';
 import type { SimulationInput } from '@/services/calculations';
 import { useSimCalculator } from '@/hooks/useSimCalculator';
+import { BusinessDataForm, BusinessDataState } from '@/components/BusinessDataForm';
+import { UnitPremisesModal } from '@/components/UnitPremisesModal';
+import { ScenariosManager, Scenario } from '@/components/ScenariosManager';
 import { 
   findMatrixRow, 
-  fetchUnits, 
-  fetchDietasForUnit, 
+  fetchUnits,
+  fetchDietasForUnit,
   fetchAnimalTypesForSelection, 
   fetchModalidadesForSelection,
   type MatrixSuggestions, 
   type UnitMatrixRow 
 } from '@/services/unitMatrix';
-import { UnitPremisesModal } from '@/components/UnitPremisesModal';
 import { HistoricalHint } from '@/components/HistoricalHint';
 import { SaveOrchestrator } from '@/services/saveOrchestrator';
 import { businessDataSchema, simulationFormSchema } from '@/schemas/simulationSchema';
 import { DrePecuarista } from '@/components/DrePecuarista';
 import { DreBoitel } from '@/components/DreBoitel';
-import { ScenariosManager, type Scenario } from '@/components/ScenariosManager';
+
 
 export default function Simulation() {
   const { user } = useAuth();
@@ -92,29 +94,24 @@ export default function Simulation() {
           use_average_weight: true,
         },
         businessData: {
-          // Identification
-          pecuarista: '',
+          pecuarista_name: '',
           originator_id: user?.id || '',
-          negotiation_date: new Date(),
+          date_ref: new Date().toISOString().split('T')[0],
           unit_code: '',
           dieta: '',
-          scale_type: 'Fazenda' as 'Fazenda' | 'Balanção' | 'Balancinha',
-          breakage_farm_pct: 2.0,
-          breakage_scale_pct: 1.0,
-          modalidade: '' as 'Diária' | 'Arroba Prod.' | '',
-          
-          // Lot & Weights
+          scale_type: 'Balancão',
+          quebra_fazenda_pct: 2.0,
+          quebra_balanca_pct: 1.0,
+          modalidade: '',
           qtd_animais: 100,
           tipo_animal: '',
           peso_fazenda_kg: 0,
           peso_entrada_balancao_kg: 0,
-          peso_ajustado_balancinha_kg: 0,
-          
-          // Market
-          lean_cattle_yield_at: 0.50,
-          price_lean_r_per_at: 300,
-          price_fat_r_per_at: 350,
-          agio_r: 0,
+          peso_entrada_balancinha_kg: 0,
+          rendimento_boi_magro_prod_pct: 52.5,
+          preco_boi_magro_r_por_arroba: 165.0,
+          preco_boi_gordo_r_por_arroba: 185.0,
+          agio_magro_r: 2.5,
         }
       };
       setScenarios([defaultScenario]);
@@ -311,6 +308,24 @@ export default function Simulation() {
     }
   };
 
+  const updateScenario = (scenarioId: string, updates: Partial<Scenario>) => {
+    setScenarios(prev => prev.map(scenario => 
+      scenario.id === scenarioId 
+        ? { ...scenario, ...updates }
+        : scenario
+    ));
+    
+    // Update local state if it's the active scenario
+    if (scenarioId === activeScenarioId) {
+      if (updates.formData) {
+        setFormData(updates.formData);
+      }
+      if (updates.businessData) {
+        setBusinessData(updates.businessData);
+      }
+    }
+  };
+
   // Load functions
   const loadPremises = async () => {
     try {
@@ -353,13 +368,17 @@ export default function Simulation() {
   };
 
   const loadMatrixSuggestions = async () => {
+    if (!businessData.unit_code || !businessData.modalidade || !businessData.dieta || !businessData.tipo_animal || !formData.entry_weight_kg) {
+      return;
+    }
+
     try {
       const suggestions = await findMatrixRow({
         unit_code: businessData.unit_code,
         modalidade: businessData.modalidade,
         dieta: businessData.dieta,
         tipo_animal: businessData.tipo_animal,
-        entry_weight_kg: formData.entry_weight_kg || 0
+        entry_weight_kg: formData.entry_weight_kg
       });
       
       setMatrixSuggestions(suggestions);
@@ -539,6 +558,20 @@ export default function Simulation() {
             </TabsList>
 
             <TabsContent value="animal" className="space-y-6">
+              {/* Business Data Form */}
+              <BusinessDataForm
+                data={activeScenario.businessData}
+                onChange={(newBusinessData) => updateScenario(activeScenarioId, { businessData: newBusinessData })}
+                profiles={profiles.map(p => ({ 
+                  id: p.id, 
+                  first_name: p.first_name || '', 
+                  last_name: p.last_name || '' 
+                }))}
+                matrixSuggestions={matrixSuggestions}
+                onMatrixLookup={loadMatrixSuggestions}
+                onShowPremises={() => setShowPremisesModal(true)}
+                entryWeight={activeScenario.formData.entry_weight_kg}
+              />
               <Card>
                 <CardHeader>
                   <CardTitle className="text-blue-700 dark:text-blue-400">Dados do Negócio</CardTitle>
