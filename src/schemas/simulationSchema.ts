@@ -28,7 +28,9 @@ export const simulationSchema = z.object({
   gmd_kg_dia: z.number().min(0, 'GMD deve ser positivo'),
   rc_pct: z.number().min(0).max(1), // Store as fraction (0.55 = 55%)
   dmi_kg_dia: z.number().min(0).optional(),
+  pct_pv: z.number().min(0).max(1).optional(), // % of body weight for DMI calculation
   custo_ms_kg: z.number().min(0, 'Custo da MS é obrigatório'),
+  desperdicio_ms_pct: z.number().min(0).max(1).optional(), // Feed waste % as fraction
   
   // MERCADO
   rendimento_boi_magro_prod_pct: z.number().min(0).max(1).default(0.50), // Store as fraction (0.50 = 50%)
