@@ -8,48 +8,90 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Wifi, CheckCircle } from 'lucide-react';
 
 export default function Auth() {
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
-  // Preflight connectivity check
-  useEffect(() => {
-    const checkSupabaseConnection = async () => {
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://tsydbthtusyaarthnrhv.supabase.co";
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzeWRidGh0dXN5YWFydGhucmh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MjE4MTAsImV4cCI6MjA3MjQ5NzgxMH0.AGglrhqk_FOY76id6ASNVPsCsm24VDUvYunsYoogpbU";
-      
-      // Check for missing environment variables
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        setConnectionError("Missing Supabase env. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Lovable → Settings → Environment variables.");
-        toast({
-          variant: "destructive",
-          title: "Configuração necessária",
-          description: "Configure as variáveis de ambiente do Supabase em Lovable → Settings → Environment variables.",
-        });
+  // Constants for Supabase connection
+  const SUPABASE_URL = "https://tsydbthtusyaarthnrhv.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzeWRidGh0dXN5YWFydGhucmh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MjE4MTAsImV4cCI6MjA3MjQ5NzgxMH0.AGglrhqk_FOY76id6ASNVPsCsm24VDUvYunsYoogpbU";
+
+  // Log connection details for debugging
+  console.log('Supabase URL:', SUPABASE_URL);
+  console.log('Anon Key prefix:', SUPABASE_ANON_KEY.substring(0, 10) + '...');
+
+  const pingSupabase = async () => {
+    setTesting(true);
+    setConnectionError(null);
+    setConnectionStatus(null);
+
+    try {
+      // Check if we have the required configuration
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        const message = "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY";
+        setConnectionError(message);
+        console.error(message);
         return;
       }
 
-      try {
-        const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
-          headers: { apikey: SUPABASE_ANON_KEY }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+      console.log('Testing connection to:', `${SUPABASE_URL}/auth/v1/settings`);
+      
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+        headers: { 
+          apikey: SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
         }
-        
-        setConnectionError(null);
-      } catch (error) {
-        setConnectionError("Não foi possível conectar ao Supabase (verifique URL/ANON KEY e URLs de redirecionamento).");
-      }
-    };
+      });
 
-    checkSupabaseConnection();
-  }, [toast]);
+      if (response.status === 200) {
+        const message = "Conexão OK (settings 200)";
+        setConnectionStatus(message);
+        setConnectionError(null);
+        console.log(message);
+      } else if (response.status === 403) {
+        const message = "API key inválida (use ANON, não service_role)";
+        setConnectionError(message);
+        console.error(message, 'Key prefix:', SUPABASE_ANON_KEY.substring(0, 10));
+      } else if (response.status === 404) {
+        const message = "URL do projeto incorreta (verifique VITE_SUPABASE_URL)";
+        setConnectionError(message);
+        console.error(message);
+      } else {
+        const body = await response.text().catch(() => 'Unable to read response');
+        const message = `HTTP ${response.status}: ${body.substring(0, 100)}`;
+        setConnectionError(message);
+        console.error(message);
+      }
+    } catch (error) {
+      let message = "Erro desconhecido";
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        message = "Falha de rede/SSL (proxy/antivírus). Peça bypass para *.supabase.co/*.supabase.in e *.lovable.dev/*.lovable.app.";
+      } else if (error instanceof Error) {
+        if (error.message.includes('SSL') || error.message.includes('certificate')) {
+          message = "Falha de rede/SSL (proxy/antivírus). Peça bypass para *.supabase.co/*.supabase.in e *.lovable.dev/*.lovable.app.";
+        } else {
+          message = `Erro de rede: ${error.message}`;
+        }
+      }
+      
+      setConnectionError(message);
+      console.error('Connection test failed:', error);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  // Preflight connectivity check on mount
+  useEffect(() => {
+    pingSupabase();
+  }, []);
 
   // Redirect if already authenticated
   if (user) {
@@ -65,34 +107,35 @@ export default function Auth() {
       const email = formData.get('email') as string;
       const password = formData.get('password') as string;
 
+      console.log('Attempting sign in for:', email);
       const { error } = await signIn(email, password);
       
       if (error) {
-        // Handle specific error types
-        if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('CORS')) {
-          toast({
-            variant: "destructive",
-            title: "Falha de conexão",
-            description: "Falha ao contatar Supabase. Verifique URLs de redirecionamento e variáveis de ambiente.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Erro no login",
-            description: error.message,
-          });
-        }
+        console.error('Sign in error:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro no login",
+          description: error.message,
+        });
       } else {
+        console.log('Sign in successful');
         toast({
           title: "Login realizado com sucesso!",
           description: "Bem-vindo ao Boitel JBS",
         });
       }
     } catch (error) {
+      console.error('Network error during sign in:', error);
+      let message = "Falha ao contatar Supabase (rede/SSL).";
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        message = "Falha ao contatar Supabase (rede/SSL).";
+      }
+      
       toast({
         variant: "destructive",
         title: "Falha de conexão",
-        description: "Falha ao contatar Supabase. Verifique URLs de redirecionamento e variáveis de ambiente.",
+        description: message,
       });
     }
     
@@ -110,34 +153,35 @@ export default function Auth() {
       const firstName = formData.get('firstName') as string;
       const lastName = formData.get('lastName') as string;
 
+      console.log('Attempting sign up for:', email);
       const { error } = await signUp(email, password, firstName, lastName);
       
       if (error) {
-        // Handle specific error types
-        if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('CORS')) {
-          toast({
-            variant: "destructive",
-            title: "Falha de conexão",
-            description: "Falha ao contatar Supabase. Verifique URLs de redirecionamento e variáveis de ambiente.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Erro no cadastro",
-            description: error.message,
-          });
-        }
+        console.error('Sign up error:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro no cadastro",
+          description: error.message,
+        });
       } else {
+        console.log('Sign up successful');
         toast({
           title: "Cadastro realizado com sucesso!",
           description: "Verifique seu email para confirmar a conta",
         });
       }
     } catch (error) {
+      console.error('Network error during sign up:', error);
+      let message = "Falha ao contatar Supabase (rede/SSL).";
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        message = "Falha ao contatar Supabase (rede/SSL).";
+      }
+      
       toast({
         variant: "destructive",
         title: "Falha de conexão",
-        description: "Falha ao contatar Supabase. Verifique URLs de redirecionamento e variáveis de ambiente.",
+        description: message,
       });
     }
     
@@ -154,12 +198,35 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {connectionError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{connectionError}</AlertDescription>
-            </Alert>
-          )}
+          {/* Connection Diagnostics */}
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={pingSupabase}
+                disabled={testing}
+                className="flex items-center gap-2"
+              >
+                <Wifi className="h-4 w-4" />
+                {testing ? "Testando..." : "Testar conexão com Supabase"}
+              </Button>
+            </div>
+            
+            {connectionError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">{connectionError}</AlertDescription>
+              </Alert>
+            )}
+            
+            {connectionStatus && (
+              <Alert variant="default" className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-sm text-green-800">{connectionStatus}</AlertDescription>
+              </Alert>
+            )}
+          </div>
           <Tabs defaultValue="signin" className="space-y-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Entrar</TabsTrigger>
