@@ -9,7 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
-import Simulation from "./pages/Simulation";
+import SimulationNew from "./pages/SimulationNew";
 import Simulations from "./pages/Simulations";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
@@ -49,7 +49,7 @@ const App = () => (
             <Route path="/simulation" element={
               <ProtectedRoute>
                 <AppLayout>
-                  <Simulation />
+                  <SimulationNew />
                 </AppLayout>
               </ProtectedRoute>
             } />
