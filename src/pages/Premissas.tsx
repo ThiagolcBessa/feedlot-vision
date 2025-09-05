@@ -74,10 +74,10 @@ export default function Premissas() {
   
   // Filters state
   const [filters, setFilters] = useState<Filters>({
-    unit_code: searchParams.get('unit') || '',
-    modalidade: searchParams.get('modalidade') || '',
-    dieta: searchParams.get('dieta') || '',
-    tipo_animal: searchParams.get('tipo_animal') || '',
+    unit_code: searchParams.get('unit') || 'all',
+    modalidade: searchParams.get('modalidade') || 'all',
+    dieta: searchParams.get('dieta') || 'all',
+    tipo_animal: searchParams.get('tipo_animal') || 'all',
     validity: 'current',
     start_date: '',
     end_date: '',
@@ -118,16 +118,16 @@ export default function Premissas() {
         .select('*');
 
       // Apply filters
-      if (filters.unit_code) {
+      if (filters.unit_code && filters.unit_code !== 'all') {
         query = query.eq('unit_code', filters.unit_code);
       }
-      if (filters.modalidade) {
+      if (filters.modalidade && filters.modalidade !== 'all') {
         query = query.eq('modalidade', filters.modalidade);
       }
-      if (filters.dieta) {
+      if (filters.dieta && filters.dieta !== 'all') {
         query = query.eq('dieta', filters.dieta);
       }
-      if (filters.tipo_animal) {
+      if (filters.tipo_animal && filters.tipo_animal !== 'all') {
         query = query.eq('tipo_animal', filters.tipo_animal);
       }
 
@@ -173,10 +173,10 @@ export default function Premissas() {
 
   const clearFilters = () => {
     setFilters({
-      unit_code: '',
-      modalidade: '',
-      dieta: '',
-      tipo_animal: '',
+      unit_code: 'all',
+      modalidade: 'all',
+      dieta: 'all',
+      tipo_animal: 'all',
       validity: 'current',
       start_date: '',
       end_date: '',
@@ -441,7 +441,7 @@ export default function Premissas() {
                   <SelectValue placeholder="Todas unidades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas unidades</SelectItem>
+                  <SelectItem value="all">Todas unidades</SelectItem>
                   {units.map((unit) => (
                     <SelectItem key={unit.code} value={unit.code}>
                       {unit.code} - {unit.name}
@@ -458,7 +458,7 @@ export default function Premissas() {
                   <SelectValue placeholder="Todas modalidades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas modalidades</SelectItem>
+                  <SelectItem value="all">Todas modalidades</SelectItem>
                   {modalidades.map((modalidade) => (
                     <SelectItem key={modalidade} value={modalidade}>
                       {modalidade}
@@ -475,7 +475,7 @@ export default function Premissas() {
                   <SelectValue placeholder="Todas dietas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas dietas</SelectItem>
+                  <SelectItem value="all">Todas dietas</SelectItem>
                   {dietas.map((dieta) => (
                     <SelectItem key={dieta} value={dieta}>
                       {dieta}
@@ -492,7 +492,7 @@ export default function Premissas() {
                   <SelectValue placeholder="Todos tipos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos tipos</SelectItem>
+                  <SelectItem value="all">Todos tipos</SelectItem>
                   {tiposAnimal.map((tipo) => (
                     <SelectItem key={tipo} value={tipo}>
                       {tipo}
