@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { AlertCircle, Wifi, CheckCircle } from 'lucide-react';
 
 export default function Auth() {
@@ -18,67 +19,35 @@ export default function Auth() {
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
 
-  // Constants for Supabase connection
-  const SUPABASE_URL = "https://tsydbthtusyaarthnrhv.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzeWRidGh0dXN5YWFydGhucmh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MjE4MTAsImV4cCI6MjA3MjQ5NzgxMH0.AGglrhqk_FOY76id6ASNVPsCsm24VDUvYunsYoogpbU";
-
-  // Log connection details for debugging
-  console.log('Supabase URL:', SUPABASE_URL);
-  console.log('Anon Key prefix:', SUPABASE_ANON_KEY.substring(0, 10) + '...');
-
   const pingSupabase = async () => {
     setTesting(true);
     setConnectionError(null);
     setConnectionStatus(null);
 
     try {
-      // Check if we have the required configuration
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        const message = "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY";
-        setConnectionError(message);
-        console.error(message);
-        return;
-      }
-
-      console.log('Testing connection to:', `${SUPABASE_URL}/auth/v1/settings`);
+      console.log('Testing Supabase connection...');
       
-      const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
-        headers: { 
-          apikey: SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json'
+      // Simple test using the configured client
+      const { data, error } = await supabase.from('profiles').select('id').limit(1);
+      
+      if (error) {
+        console.log('Supabase test query error:', error.message);
+        if (error.message.includes('relation') || error.message.includes('not exist')) {
+          setConnectionStatus("Conexão OK - Supabase funcionando");
+        } else {
+          setConnectionError(`Erro Supabase: ${error.message}`);
         }
-      });
-
-      if (response.status === 200) {
-        const message = "Conexão OK (settings 200)";
-        setConnectionStatus(message);
-        setConnectionError(null);
-        console.log(message);
-      } else if (response.status === 403) {
-        const message = "API key inválida (use ANON, não service_role)";
-        setConnectionError(message);
-        console.error(message, 'Key prefix:', SUPABASE_ANON_KEY.substring(0, 10));
-      } else if (response.status === 404) {
-        const message = "URL do projeto incorreta (verifique VITE_SUPABASE_URL)";
-        setConnectionError(message);
-        console.error(message);
       } else {
-        const body = await response.text().catch(() => 'Unable to read response');
-        const message = `HTTP ${response.status}: ${body.substring(0, 100)}`;
-        setConnectionError(message);
-        console.error(message);
+        setConnectionStatus("Conexão OK - Supabase funcionando");
+        console.log('Supabase connection test successful');
       }
     } catch (error) {
       let message = "Erro desconhecido";
       
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        message = "Falha de rede/SSL (proxy/antivírus). Peça bypass para *.supabase.co/*.supabase.in e *.lovable.dev/*.lovable.app.";
+        message = "Falha de rede/SSL. Verifique sua conexão com a internet.";
       } else if (error instanceof Error) {
-        if (error.message.includes('SSL') || error.message.includes('certificate')) {
-          message = "Falha de rede/SSL (proxy/antivírus). Peça bypass para *.supabase.co/*.supabase.in e *.lovable.dev/*.lovable.app.";
-        } else {
-          message = `Erro de rede: ${error.message}`;
-        }
+        message = `Erro de conexão: ${error.message}`;
       }
       
       setConnectionError(message);
@@ -87,11 +56,6 @@ export default function Auth() {
       setTesting(false);
     }
   };
-
-  // Preflight connectivity check on mount
-  useEffect(() => {
-    pingSupabase();
-  }, []);
 
   // Redirect if already authenticated
   if (user) {
@@ -126,16 +90,10 @@ export default function Auth() {
       }
     } catch (error) {
       console.error('Network error during sign in:', error);
-      let message = "Falha ao contatar Supabase (rede/SSL).";
-      
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        message = "Falha ao contatar Supabase (rede/SSL).";
-      }
-      
       toast({
         variant: "destructive",
-        title: "Falha de conexão",
-        description: message,
+        title: "Falha de conexão", 
+        description: "Erro de rede. Tente novamente.",
       });
     }
     
@@ -172,16 +130,10 @@ export default function Auth() {
       }
     } catch (error) {
       console.error('Network error during sign up:', error);
-      let message = "Falha ao contatar Supabase (rede/SSL).";
-      
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        message = "Falha ao contatar Supabase (rede/SSL).";
-      }
-      
       toast({
         variant: "destructive",
         title: "Falha de conexão",
-        description: message,
+        description: "Erro de rede. Tente novamente.",
       });
     }
     
