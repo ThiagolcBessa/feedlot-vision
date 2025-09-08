@@ -80,16 +80,17 @@ export async function fetchUnits() {
       console.error('Error fetching units:', error);
       // Return fallback mock data with proper structure
       return [
-        { code: 'CGA', name: 'CGA Unit', state: 'GO' },
-        { code: 'CBS', name: 'CBS Unit', state: 'MS' },
-        { code: 'CCF', name: 'CCF Unit', state: 'MT' },
-        { code: 'CLV', name: 'CLV Unit', state: 'GO' },
-        { code: 'CPN', name: 'CPN Unit', state: 'MT' },
+        { id: 'mock-id-1', code: 'CGA', name: 'CGA Unit', state: 'GO' },
+        { id: 'mock-id-2', code: 'CBS', name: 'CBS Unit', state: 'MS' },
+        { id: 'mock-id-3', code: 'CCF', name: 'CCF Unit', state: 'MT' },
+        { id: 'mock-id-4', code: 'CLV', name: 'CLV Unit', state: 'GO' },
+        { id: 'mock-id-5', code: 'CPN', name: 'CPN Unit', state: 'MT' },
       ];
     }
     
     // Transform data to expected format
     return (data || []).map((unit: any) => ({
+      id: unit.id,
       code: unit.code,
       name: unit.name || unit.code,
       state: unit.state || 'N/A'
@@ -98,11 +99,11 @@ export async function fetchUnits() {
     console.error('Error fetching units:', error);
     // Return fallback mock data
     return [
-      { code: 'CGA', name: 'CGA Unit', state: 'GO' },
-      { code: 'CBS', name: 'CBS Unit', state: 'MS' },
-      { code: 'CCF', name: 'CCF Unit', state: 'MT' },
-      { code: 'CLV', name: 'CLV Unit', state: 'GO' },
-      { code: 'CPN', name: 'CPN Unit', state: 'MT' },
+      { id: 'mock-id-1', code: 'CGA', name: 'CGA Unit', state: 'GO' },
+      { id: 'mock-id-2', code: 'CBS', name: 'CBS Unit', state: 'MS' },
+      { id: 'mock-id-3', code: 'CCF', name: 'CCF Unit', state: 'MT' },
+      { id: 'mock-id-4', code: 'CLV', name: 'CLV Unit', state: 'GO' },
+      { id: 'mock-id-5', code: 'CPN', name: 'CPN Unit', state: 'MT' },
     ];
   }
 }

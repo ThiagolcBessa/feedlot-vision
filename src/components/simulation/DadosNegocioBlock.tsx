@@ -14,7 +14,7 @@ interface DadosNegocioBlockProps {
 }
 
 export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBlockProps) {
-  const [units, setUnits] = useState<Array<{ code: string; name: string; state: string }>>([]);
+  const [units, setUnits] = useState<Array<{ id: string; code: string; name: string; state: string }>>([]);
   const [dietas, setDietas] = useState<string[]>([]);
 
   useEffect(() => {
@@ -97,13 +97,21 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
              <Select 
                value={data.unit_id || ''} 
                onValueChange={async (value) => {
-                 // Find the selected unit to get its code
-                 const selectedUnit = units.find(u => u.code === value);
+                 // Find the selected unit by ID
+                 const selectedUnit = units.find(u => String(u.id) === String(value));
                  if (selectedUnit) {
-                   handleDependencyChange('unit_id', selectedUnit.code);
+                   // Update both unit_id and unit_code in form
+                   handleDependencyChange('unit_id', String(selectedUnit.id));
                    handleDependencyChange('unit_code', selectedUnit.code);
+                   
+                   // Clear dependents
+                   handleDependencyChange('tipo_animal', undefined);
+                   
+                   // Load dietas for the selected unit
                    const dietasData = await fetchDietasForUnit(selectedUnit.code);
                    setDietas(dietasData);
+                   
+                   console.debug('[unitSelect]', { unit_id: selectedUnit.id, unit_code: selectedUnit.code });
                  }
                }}
              >
@@ -112,8 +120,8 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
                </SelectTrigger>
                <SelectContent>
                  {units.map(unit => (
-                   <SelectItem key={unit.code} value={unit.code}>
-                     {unit.code} - {unit.state || ''}
+                   <SelectItem key={unit.id} value={String(unit.id)}>
+                     {unit.code} - {unit.state || 'N/A'}
                    </SelectItem>
                  ))}
                </SelectContent>
