@@ -95,11 +95,14 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
            <div className="space-y-2">
              <Label htmlFor="unit_code">Unidade</Label>
              <Select 
-               value={data.unit_code || ''} 
+               value={data.unit_id || ''} 
                onValueChange={async (value) => {
-                 handleDependencyChange('unit_code', value);
-                 if (value) {
-                   const dietasData = await fetchDietasForUnit(value);
+                 // Find the selected unit to get its code
+                 const selectedUnit = units.find(u => u.code === value);
+                 if (selectedUnit) {
+                   handleDependencyChange('unit_id', selectedUnit.code);
+                   handleDependencyChange('unit_code', selectedUnit.code);
+                   const dietasData = await fetchDietasForUnit(selectedUnit.code);
                    setDietas(dietasData);
                  }
                }}
@@ -110,7 +113,7 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
                <SelectContent>
                  {units.map(unit => (
                    <SelectItem key={unit.code} value={unit.code}>
-                     {unit.name} ({unit.state})
+                     {unit.code} - {unit.state || ''}
                    </SelectItem>
                  ))}
                </SelectContent>

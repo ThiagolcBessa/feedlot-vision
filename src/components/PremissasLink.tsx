@@ -21,11 +21,12 @@ export function PremissasLink({
 }: PremissasLinkProps) {
   const params = new URLSearchParams();
   
-  if (unit_code) params.append('unit', unit_code);
+  if (unit_code) params.append('unit_code', unit_code);
   if (modalidade) params.append('modalidade', modalidade);
   if (dieta) params.append('dieta', dieta);
   if (tipo_animal) params.append('tipo_animal', tipo_animal);
   if (highlightId) params.append('highlight', highlightId);
+  params.append('validade', 'vigentes');
   
   const queryString = params.toString();
   const href = `/premissas${queryString ? `?${queryString}` : ''}`;

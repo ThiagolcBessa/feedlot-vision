@@ -63,14 +63,16 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
       const dateISO = new Date(formData.date_ref!).toISOString().split('T')[0];
       
       // Normalize strings  
-      const dietaN = formData.dieta?.trim() ?? '';
-      const modalidadeN = formData.modalidade?.trim() ?? '';
+      const unit_code = formData.unit_code?.trim() ?? '';
+      const dieta = formData.dieta?.trim() ?? '';
+      const modalidade = formData.modalidade?.trim() ?? '';
+      const tipo_animal = formData.tipo_animal?.trim() ?? '';
       
       console.debug('[resolver]', { 
-        unitCode: formData.unit_code,
-        dietaN,
-        modalidadeN, 
-        tipo: formData.tipo_animal,
+        unit_code,
+        dieta,
+        modalidade, 
+        tipo_animal,
         pesoBalancao: formData.peso_entrada_balancao_kg,
         dateISO
       });
@@ -78,10 +80,10 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
       const { data, error: queryError } = await supabase
         .from('unit_price_matrix')
         .select('*')
-        .eq('unit_code', formData.unit_code)
-        .eq('modalidade', modalidadeN)
-        .eq('dieta', dietaN)
-        .eq('tipo_animal', formData.tipo_animal)
+        .eq('unit_code', unit_code)
+        .eq('modalidade', modalidade)
+        .eq('dieta', dieta)
+        .eq('tipo_animal', tipo_animal)
         .lte('start_validity', dateISO)
         .or(`end_validity.is.null,end_validity.gt.${dateISO}`)
         .lte('peso_de_kg', formData.peso_entrada_balancao_kg!)
@@ -123,6 +125,7 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
       modalidade: formData.modalidade || '',
       dieta: formData.dieta || '',
       tipo_animal: formData.tipo_animal || '',
+      validade: 'vigentes'
     });
     
     if (matrixRow?.id) {

@@ -101,11 +101,11 @@ export default function Premissas() {
   
   // Filters state
   const [filters, setFilters] = useState<Filters>({
-    unit_code: searchParams.get('unit') || 'all',
+    unit_code: searchParams.get('unit_code') || 'all',
     modalidade: searchParams.get('modalidade') || 'all',
     dieta: searchParams.get('dieta') || 'all',
     tipo_animal: searchParams.get('tipo_animal') || 'all',
-    validity: 'current',
+    validity: (searchParams.get('validade') === 'vigentes' ? 'current' : 'all') as 'current' | 'all' | 'custom',
     start_date: '',
     end_date: '',
     search: '',
@@ -218,6 +218,7 @@ export default function Premissas() {
           .gte('start_validity', filters.start_date)
           .lte('end_validity', filters.end_date);
       }
+      // If filters.validity === 'all', don't add any date filters
 
       // Apply search filter
       if (filters.search.trim()) {
@@ -808,11 +809,11 @@ export default function Premissas() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">Vigentes hoje</SelectItem>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="custom">Período customizado</SelectItem>
-                </SelectContent>
+                 <SelectContent>
+                   <SelectItem value="current">Vigentes hoje</SelectItem>
+                   <SelectItem value="all">Todas as datas</SelectItem>
+                   <SelectItem value="custom">Período customizado</SelectItem>
+                 </SelectContent>
               </Select>
             </div>
 
@@ -865,12 +866,25 @@ export default function Premissas() {
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : data.length === 0 ? (
-            <div className="text-center p-8">
-              <Database className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Nenhum registro encontrado</h3>
-              <p className="text-muted-foreground mb-4">Ajuste os filtros para encontrar registros</p>
-            </div>
+           ) : data.length === 0 ? (
+             <div className="text-center p-8">
+               <Database className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+               <h3 className="text-lg font-semibold mb-2">Nenhum registro encontrado</h3>
+               <p className="text-muted-foreground mb-4">
+                 {filters.validity === 'current' 
+                   ? 'Não há linhas vigentes hoje. Tente "Todas as datas" ou altere a data.'
+                   : 'Ajuste os filtros para encontrar registros'
+                 }
+               </p>
+               {filters.validity === 'current' && (
+                 <Button 
+                   variant="outline" 
+                   onClick={() => handleFilterChange('validity', 'all')}
+                 >
+                   Ver Todas as Datas
+                 </Button>
+               )}
+             </div>
           ) : (
             <div className="space-y-4">
               <div className="overflow-x-auto">

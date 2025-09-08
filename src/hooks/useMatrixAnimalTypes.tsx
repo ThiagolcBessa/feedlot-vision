@@ -26,7 +26,7 @@ export function useMatrixAnimalTypes({
       setAnimalTypes([]);
       setError(null);
 
-      // Check if all required params are present (except date if includeHistorical)
+      // Check if all required params are present
       if (!unitCode || !dieta || !modalidade) {
         return;
       }
@@ -35,16 +35,17 @@ export function useMatrixAnimalTypes({
       
       try {
         // Normalize strings
-        const dietaN = dieta?.trim() ?? '';
-        const modalidadeN = modalidade?.trim() ?? '';
+        const u = unitCode?.trim() ?? '';
+        const d = dieta?.trim() ?? '';
+        const m = modalidade?.trim() ?? '';
         const dateISO = dateRef ? dateRef.toISOString().slice(0, 10) : null;
         
         let query = supabase
           .from('unit_price_matrix')
           .select('tipo_animal')
-          .eq('unit_code', unitCode)
-          .eq('dieta', dietaN)
-          .eq('modalidade', modalidadeN)
+          .eq('unit_code', u)
+          .eq('dieta', d)
+          .eq('modalidade', m)
           .not('tipo_animal', 'is', null)
           .order('tipo_animal', { ascending: true });
 
@@ -64,11 +65,9 @@ export function useMatrixAnimalTypes({
         // Get unique animal types
         const uniqueTypes = Array.from(new Set((data ?? []).map(r => r.tipo_animal).filter(Boolean)));
         console.debug('[animals]', { 
-          unitCode, 
-          dietaN, 
-          modalidadeN, 
-          dateISO, 
+          u, d, m, 
           includeHistorical, 
+          dateISO, 
           count: uniqueTypes.length,
           error: queryError?.message 
         });

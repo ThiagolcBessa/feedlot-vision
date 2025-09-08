@@ -9,6 +9,7 @@ export const simulationSchema = z.object({
   pecuarista_name: z.string().min(1, 'Pecuarista é obrigatório'),
   originator_id: z.string().uuid('Originador inválido'),
   date_ref: z.date(),
+  unit_id: z.string().uuid('Unidade inválida').optional(),
   unit_code: z.string().min(1, 'Unidade é obrigatória'),
   dieta: z.string().min(1, 'Dieta é obrigatória'),
   scale_type: z.enum(['Fazenda', 'Balanção', 'Balancinha']),
