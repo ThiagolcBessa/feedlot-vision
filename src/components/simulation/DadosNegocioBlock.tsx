@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Controller, useFormContext } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,7 @@ interface DadosNegocioBlockProps {
 }
 
 export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBlockProps) {
+  const { control, setValue, getValues } = useFormContext();
   const [units, setUnits] = useState<Array<{ id: string; code: string; name: string; state: string }>>([]);
   const [dietas, setDietas] = useState<string[]>([]);
 
@@ -94,38 +96,48 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
            <div className="space-y-2">
              <Label htmlFor="unit_code">Unidade</Label>
-             <Select 
-               value={data.unit_id || ''} 
-               onValueChange={async (value) => {
-                 // Find the selected unit by ID
-                 const selectedUnit = units.find(u => String(u.id) === String(value));
-                 if (selectedUnit) {
-                   // Update both unit_id and unit_code in form
-                   handleDependencyChange('unit_id', String(selectedUnit.id));
-                   handleDependencyChange('unit_code', selectedUnit.code);
-                   
-                   // Clear dependents
-                   handleDependencyChange('tipo_animal', undefined);
-                   
-                   // Load dietas for the selected unit
-                   const dietasData = await fetchDietasForUnit(selectedUnit.code);
-                   setDietas(dietasData);
-                   
-                   console.debug('[unitSelect]', { unit_id: selectedUnit.id, unit_code: selectedUnit.code });
-                 }
-               }}
-             >
-               <SelectTrigger>
-                 <SelectValue placeholder="Selecione a unidade" />
-               </SelectTrigger>
-               <SelectContent>
-                 {units.map(unit => (
-                   <SelectItem key={unit.id} value={String(unit.id)}>
-                     {unit.code} - {unit.state || 'N/A'}
-                   </SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
+             <Controller
+               name="unit_id"
+               control={control}
+               defaultValue=""
+               render={({ field }) => (
+                 <Select
+                   value={field.value ?? ''}
+                   onValueChange={async (v) => {
+                     field.onChange(String(v)); // atualiza o RHF
+                     const row = units.find(u => String(u.id) === String(v));
+                     setValue('unit_code', row?.code ?? '', { shouldDirty: true });
+                     // limpar dependentes
+                     setValue('tipo_animal', undefined, { shouldDirty: true });
+                     // se houver flag de histórico
+                     setValue('useHistoricalTypes', false, { shouldDirty: true });
+                     
+                     // Load dietas for the selected unit
+                     if (row) {
+                       const dietasData = await fetchDietasForUnit(row.code);
+                       setDietas(dietasData);
+                     }
+                     
+                     if (typeof window !== 'undefined') {
+                       console.debug('[unitSelect]', { unit_id: v, unit_code: row?.code });
+                       console.debug('[form]', getValues(['unit_id', 'unit_code']));
+                     }
+                   }}
+                   disabled={units.length === 0}
+                 >
+                   <SelectTrigger className="w-full">
+                     <SelectValue placeholder="Selecione a unidade" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     {units.map(unit => (
+                       <SelectItem key={unit.id} value={String(unit.id)}>
+                         {unit.code} - {unit.state || 'N/A'}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               )}
+             />
            </div>
            <div className="space-y-2">
              <Label htmlFor="dieta">Dieta</Label>
