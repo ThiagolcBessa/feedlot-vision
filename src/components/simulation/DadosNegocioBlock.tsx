@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchUnits, fetchDietasForUnit } from '@/services/unitMatrix';
+import { useMatrixAnimalTypes } from '@/hooks/useMatrixAnimalTypes';
 import type { SimulationFormType } from '@/schemas/simulationSchema';
 
 interface DadosNegocioBlockProps {
@@ -16,9 +17,24 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
   const [units, setUnits] = useState<Array<{ code: string; name: string; state: string }>>([]);
   const [dietas, setDietas] = useState<string[]>([]);
 
+  // Hook to fetch dynamic animal types from matrix
+  const { animalTypes, isReady: animalTypesReady } = useMatrixAnimalTypes({
+    unitCode: data.unit_code,
+    dieta: data.dieta,
+    modalidade: data.modalidade,
+    dateRef: data.date_ref
+  });
+
   useEffect(() => {
     loadUnits();
   }, []);
+
+  // Clear tipo_animal when dependencies change
+  useEffect(() => {
+    if (data.tipo_animal && animalTypesReady && !animalTypes.includes(data.tipo_animal)) {
+      onChange({ ...data, tipo_animal: undefined });
+    }
+  }, [data.unit_code, data.dieta, data.modalidade, data.date_ref]);
 
   const loadUnits = async () => {
     try {
@@ -31,6 +47,15 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
 
   const handleFieldChange = (field: keyof SimulationFormType, value: any) => {
     onChange({ ...data, [field]: value });
+  };
+
+  const handleDependencyChange = (field: keyof SimulationFormType, value: any) => {
+    // Clear tipo_animal when dependencies change
+    const updates: Partial<SimulationFormType> = { [field]: value };
+    if (['unit_code', 'dieta', 'modalidade', 'date_ref'].includes(field) && data.tipo_animal) {
+      updates.tipo_animal = undefined;
+    }
+    onChange({ ...data, ...updates });
   };
 
   return (
@@ -69,92 +94,100 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="date_ref">Data Referência</Label>
-            <Input
-              id="date_ref"
-              type="date"
-              value={data.date_ref ? new Date(data.date_ref).toISOString().split('T')[0] : ''}
-              onChange={(e) => handleFieldChange('date_ref', new Date(e.target.value))}
-            />
-          </div>
+           <div className="space-y-2">
+             <Label htmlFor="date_ref">Data Referência</Label>
+             <Input
+               id="date_ref"
+               type="date"
+               value={data.date_ref ? new Date(data.date_ref).toISOString().split('T')[0] : ''}
+               onChange={(e) => handleDependencyChange('date_ref', new Date(e.target.value))}
+             />
+           </div>
         </div>
 
         {/* Second Row: Unit, Diet, Animal Type, Modality */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="unit_code">Unidade</Label>
-            <Select 
-              value={data.unit_code || ''} 
-              onValueChange={async (value) => {
-                handleFieldChange('unit_code', value);
-                if (value) {
-                  const dietasData = await fetchDietasForUnit(value);
-                  setDietas(dietasData);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {units.map(unit => (
-                  <SelectItem key={unit.code} value={unit.code}>
-                    {unit.name} ({unit.state})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dieta">Dieta</Label>
-            <Select 
-              value={data.dieta || ''} 
-              onValueChange={(value) => handleFieldChange('dieta', value)}
-              disabled={!data.unit_code}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a dieta" />
-              </SelectTrigger>
-              <SelectContent>
-                {dietas.map(dieta => (
-                  <SelectItem key={dieta} value={dieta}>
-                    {dieta}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="tipo_animal">Tipo Animal</Label>
-            <Select 
-              value={data.tipo_animal || ''} 
-              onValueChange={(value) => handleFieldChange('tipo_animal', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Macho">Macho</SelectItem>
-                <SelectItem value="Fêmea">Fêmea</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modalidade">Modalidade</Label>
-            <Select 
-              value={data.modalidade || ''} 
-              onValueChange={(value) => handleFieldChange('modalidade', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a modalidade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Diária">Diária</SelectItem>
-                <SelectItem value="Arroba Prod.">Arroba Prod.</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+           <div className="space-y-2">
+             <Label htmlFor="unit_code">Unidade</Label>
+             <Select 
+               value={data.unit_code || ''} 
+               onValueChange={async (value) => {
+                 handleDependencyChange('unit_code', value);
+                 if (value) {
+                   const dietasData = await fetchDietasForUnit(value);
+                   setDietas(dietasData);
+                 }
+               }}
+             >
+               <SelectTrigger>
+                 <SelectValue placeholder="Selecione a unidade" />
+               </SelectTrigger>
+               <SelectContent>
+                 {units.map(unit => (
+                   <SelectItem key={unit.code} value={unit.code}>
+                     {unit.name} ({unit.state})
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           </div>
+           <div className="space-y-2">
+             <Label htmlFor="dieta">Dieta</Label>
+             <Select 
+               value={data.dieta || ''} 
+               onValueChange={(value) => handleDependencyChange('dieta', value)}
+               disabled={!data.unit_code}
+             >
+               <SelectTrigger>
+                 <SelectValue placeholder="Selecione a dieta" />
+               </SelectTrigger>
+               <SelectContent>
+                 {dietas.map(dieta => (
+                   <SelectItem key={dieta} value={dieta}>
+                     {dieta}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           </div>
+           <div className="space-y-2">
+             <Label htmlFor="tipo_animal">Tipo Animal</Label>
+             <Select 
+               value={data.tipo_animal || ''} 
+               onValueChange={(value) => handleFieldChange('tipo_animal', value)}
+               disabled={!animalTypesReady}
+             >
+               <SelectTrigger>
+                 <SelectValue placeholder={
+                   animalTypesReady 
+                     ? "Selecione o tipo" 
+                     : "Selecione a unidade/dieta/modalidade/data"
+                 } />
+               </SelectTrigger>
+               <SelectContent>
+                 {animalTypes.map(tipo => (
+                   <SelectItem key={tipo} value={tipo}>
+                     {tipo}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           </div>
+           <div className="space-y-2">
+             <Label htmlFor="modalidade">Modalidade</Label>
+             <Select 
+               value={data.modalidade || ''} 
+               onValueChange={(value) => handleDependencyChange('modalidade', value)}
+             >
+               <SelectTrigger>
+                 <SelectValue placeholder="Selecione a modalidade" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="Diária">Diária</SelectItem>
+                 <SelectItem value="Arroba Prod.">Arroba Prod.</SelectItem>
+               </SelectContent>
+             </Select>
+           </div>
         </div>
 
         {/* Third Row: Quantity */}
