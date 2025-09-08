@@ -14,6 +14,7 @@ interface DadosNegocioBlockProps {
 }
 
 export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBlockProps) {
+  // Force cache refresh - fixed FormContext error
   const [units, setUnits] = useState<Array<{ id: string; code: string; name: string; state: string }>>([]);
   const [dietas, setDietas] = useState<string[]>([]);
 
