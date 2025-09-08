@@ -62,10 +62,14 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
     try {
       const dateISO = new Date(formData.date_ref!).toISOString().split('T')[0];
       
+      // Normalize strings  
+      const dietaN = formData.dieta?.trim() ?? '';
+      const modalidadeN = formData.modalidade?.trim() ?? '';
+      
       console.debug('[resolver]', { 
         unitCode: formData.unit_code,
-        dieta: formData.dieta,
-        modalidade: formData.modalidade,
+        dietaN,
+        modalidadeN, 
         tipo: formData.tipo_animal,
         pesoBalancao: formData.peso_entrada_balancao_kg,
         dateISO
@@ -75,8 +79,8 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
         .from('unit_price_matrix')
         .select('*')
         .eq('unit_code', formData.unit_code)
-        .eq('modalidade', formData.modalidade)
-        .eq('dieta', formData.dieta)
+        .eq('modalidade', modalidadeN)
+        .eq('dieta', dietaN)
         .eq('tipo_animal', formData.tipo_animal)
         .lte('start_validity', dateISO)
         .or(`end_validity.is.null,end_validity.gt.${dateISO}`)

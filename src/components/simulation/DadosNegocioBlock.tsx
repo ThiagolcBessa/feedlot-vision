@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchUnits, fetchDietasForUnit } from '@/services/unitMatrix';
-import { useMatrixAnimalTypes } from '@/hooks/useMatrixAnimalTypes';
+import { TipoAnimalSelect } from './TipoAnimalSelect';
 import type { SimulationFormType } from '@/schemas/simulationSchema';
 
 interface DadosNegocioBlockProps {
@@ -17,24 +17,9 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
   const [units, setUnits] = useState<Array<{ code: string; name: string; state: string }>>([]);
   const [dietas, setDietas] = useState<string[]>([]);
 
-  // Hook to fetch dynamic animal types from matrix
-  const { animalTypes, isReady: animalTypesReady } = useMatrixAnimalTypes({
-    unitCode: data.unit_code,
-    dieta: data.dieta,
-    modalidade: data.modalidade,
-    dateRef: data.date_ref
-  });
-
   useEffect(() => {
     loadUnits();
   }, []);
-
-  // Clear tipo_animal when dependencies change
-  useEffect(() => {
-    if (data.tipo_animal && animalTypesReady && !animalTypes.includes(data.tipo_animal)) {
-      onChange({ ...data, tipo_animal: undefined });
-    }
-  }, [data.unit_code, data.dieta, data.modalidade, data.date_ref]);
 
   const loadUnits = async () => {
     try {
@@ -150,29 +135,10 @@ export function DadosNegocioBlock({ data, onChange, profiles }: DadosNegocioBloc
                </SelectContent>
              </Select>
            </div>
-           <div className="space-y-2">
-             <Label htmlFor="tipo_animal">Tipo Animal</Label>
-             <Select 
-               value={data.tipo_animal || ''} 
-               onValueChange={(value) => handleFieldChange('tipo_animal', value)}
-               disabled={!animalTypesReady}
-             >
-               <SelectTrigger>
-                 <SelectValue placeholder={
-                   animalTypesReady 
-                     ? "Selecione o tipo" 
-                     : "Selecione a unidade/dieta/modalidade/data"
-                 } />
-               </SelectTrigger>
-               <SelectContent>
-                 {animalTypes.map(tipo => (
-                   <SelectItem key={tipo} value={tipo}>
-                     {tipo}
-                   </SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
+           <TipoAnimalSelect
+              data={data}
+              onChange={handleFieldChange}
+            />
            <div className="space-y-2">
              <Label htmlFor="modalidade">Modalidade</Label>
              <Select 
