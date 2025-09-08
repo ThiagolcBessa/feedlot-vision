@@ -60,15 +60,15 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
     setError(null);
 
     try {
-      const dateRef = new Date(formData.date_ref!).toISOString().split('T')[0];
+      const dateISO = new Date(formData.date_ref!).toISOString().split('T')[0];
       
-      console.debug('Price resolver query params:', {
-        unit_code: formData.unit_code,
-        modalidade: formData.modalidade,
+      console.debug('[resolver]', { 
+        unitCode: formData.unit_code,
         dieta: formData.dieta,
-        tipo_animal: formData.tipo_animal,
-        peso_entrada_balancao_kg: formData.peso_entrada_balancao_kg,
-        date_ref: dateRef
+        modalidade: formData.modalidade,
+        tipo: formData.tipo_animal,
+        pesoBalancao: formData.peso_entrada_balancao_kg,
+        dateISO
       });
 
       const { data, error: queryError } = await supabase
@@ -78,8 +78,8 @@ export function PriceResolverPanel({ formData, onPriceResolved }: PriceResolverP
         .eq('modalidade', formData.modalidade)
         .eq('dieta', formData.dieta)
         .eq('tipo_animal', formData.tipo_animal)
-        .lte('start_validity', dateRef)
-        .or(`end_validity.is.null,end_validity.gt.${dateRef}`)
+        .lte('start_validity', dateISO)
+        .or(`end_validity.is.null,end_validity.gt.${dateISO}`)
         .lte('peso_de_kg', formData.peso_entrada_balancao_kg!)
         .or(`peso_ate_kg.is.null,peso_ate_kg.gt.${formData.peso_entrada_balancao_kg}`)
         .eq('is_active', true);

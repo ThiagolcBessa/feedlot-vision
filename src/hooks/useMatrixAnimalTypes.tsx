@@ -46,6 +46,7 @@ export function useMatrixAnimalTypes({ unitCode, dieta, modalidade, dateRef }: U
 
         // Get unique animal types
         const uniqueTypes = Array.from(new Set((data ?? []).map(r => r.tipo_animal).filter(Boolean)));
+        console.debug('[animals]', { unitCode, dieta, modalidade, dateISO, count: uniqueTypes.length });
         setAnimalTypes(uniqueTypes);
       } catch (err) {
         console.error('Error fetching animal types:', err);
